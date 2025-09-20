@@ -2,265 +2,299 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Http;
+use App\Models\Quote;
+use App\Models\Tenant;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class QuoteService
 {
-    private array $localQuotes = [
-        'motivational' => [
+    private const CACHE_TTL = 3600; // 1 hour
+
+    public function getRandomQuote(Tenant $tenant, ?string $category = null): ?Quote
+    {
+        $cacheKey = "quotes.random.{$tenant->id}." . ($category ?: 'all');
+
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($tenant, $category) {
+            $query = Quote::forTenant($tenant->id)->active();
+
+            if ($category) {
+                $query->byCategory($category);
+            }
+
+            $quote = $query->inRandomOrder()->first();
+
+            Log::debug('Random quote fetched', [
+                'tenant_id' => $tenant->id,
+                'category' => $category,
+                'quote_id' => $quote?->id,
+            ]);
+
+            return $quote;
+        });
+    }
+
+    public function getRotationSequence(Tenant $tenant, array $options = []): Collection
+    {
+        $mode = $options['mode'] ?? 'sequential';
+        $category = $options['category'] ?? null;
+        $limit = $options['limit'] ?? 50;
+
+        $cacheKey = "quotes.rotation.{$tenant->id}.{$mode}." . ($category ?: 'all') . ".{$limit}";
+
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($tenant, $mode, $category, $limit) {
+            $query = Quote::forTenant($tenant->id)->active();
+
+            if ($category) {
+                $query->byCategory($category);
+            }
+
+            $quotes = $query->limit($limit);
+
+            switch ($mode) {
+                case 'random':
+                    $quotes = $quotes->inRandomOrder();
+                    break;
+                case 'newest':
+                    $quotes = $quotes->orderBy('created_at', 'desc');
+                    break;
+                case 'oldest':
+                    $quotes = $quotes->orderBy('created_at', 'asc');
+                    break;
+                case 'sequential':
+                default:
+                    $quotes = $quotes->orderBy('id');
+                    break;
+            }
+
+            $result = $quotes->get();
+
+            Log::debug('Rotation sequence generated', [
+                'tenant_id' => $tenant->id,
+                'mode' => $mode,
+                'category' => $category,
+                'count' => $result->count(),
+            ]);
+
+            return $result;
+        });
+    }
+
+    public function getNextQuote(Tenant $tenant, ?int $currentQuoteId = null, array $options = []): ?Quote
+    {
+        $sequence = $this->getRotationSequence($tenant, $options);
+
+        if ($sequence->isEmpty()) {
+            return null;
+        }
+
+        if (!$currentQuoteId) {
+            return $sequence->first();
+        }
+
+        $currentIndex = $sequence->search(fn($quote) => $quote->id === $currentQuoteId);
+
+        if ($currentIndex === false) {
+            return $sequence->first();
+        }
+
+        $nextIndex = ($currentIndex + 1) % $sequence->count();
+        return $sequence->get($nextIndex);
+    }
+
+    public function seedDefaultQuotes(Tenant $tenant): int
+    {
+        $defaultQuotes = $this->getDefaultQuotes();
+        $created = 0;
+
+        foreach ($defaultQuotes as $quoteData) {
+            $exists = Quote::forTenant($tenant->id)
+                ->where('text', $quoteData['text'])
+                ->exists();
+
+            if (!$exists) {
+                Quote::create([
+                    'tenant_id' => $tenant->id,
+                    'text' => $quoteData['text'],
+                    'author' => $quoteData['author'],
+                    'category' => $quoteData['category'],
+                    'display_duration' => $quoteData['display_duration'] ?? 30,
+                ]);
+                $created++;
+            }
+        }
+
+        $this->clearCache($tenant);
+
+        Log::info('Default quotes seeded', [
+            'tenant_id' => $tenant->id,
+            'created' => $created,
+            'total_available' => count($defaultQuotes),
+        ]);
+
+        return $created;
+    }
+
+    public function getQuotesByCategory(Tenant $tenant, string $category): Collection
+    {
+        $cacheKey = "quotes.category.{$tenant->id}.{$category}";
+
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($tenant, $category) {
+            return Quote::forTenant($tenant->id)
+                ->active()
+                ->byCategory($category)
+                ->orderBy('created_at', 'desc')
+                ->get();
+        });
+    }
+
+    public function getStatistics(Tenant $tenant): array
+    {
+        $cacheKey = "quotes.stats.{$tenant->id}";
+
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($tenant) {
+            $total = Quote::forTenant($tenant->id)->count();
+            $active = Quote::forTenant($tenant->id)->active()->count();
+            $inactive = $total - $active;
+
+            $byCategory = Quote::forTenant($tenant->id)
+                ->active()
+                ->selectRaw('category, COUNT(*) as count')
+                ->groupBy('category')
+                ->pluck('count', 'category')
+                ->toArray();
+
+            return [
+                'total' => $total,
+                'active' => $active,
+                'inactive' => $inactive,
+                'by_category' => $byCategory,
+            ];
+        });
+    }
+
+    public function clearCache(Tenant $tenant): void
+    {
+        $patterns = [
+            "quotes.random.{$tenant->id}.*",
+            "quotes.rotation.{$tenant->id}.*",
+            "quotes.category.{$tenant->id}.*",
+            "quotes.stats.{$tenant->id}",
+        ];
+
+        foreach ($patterns as $pattern) {
+            Cache::forget($pattern);
+        }
+
+        Log::debug('Quote cache cleared for tenant', [
+            'tenant_id' => $tenant->id,
+        ]);
+    }
+
+    private function getDefaultQuotes(): array
+    {
+        return [
             [
                 'text' => 'O sucesso é a soma de pequenos esforços repetidos dia após dia.',
                 'author' => 'Robert Collier',
-            ],
-            [
-                'text' => 'A única forma de fazer um trabalho excelente é amar o que você faz.',
-                'author' => 'Steve Jobs',
-            ],
-            [
-                'text' => 'O futuro pertence àqueles que acreditam na beleza de seus sonhos.',
-                'author' => 'Eleanor Roosevelt',
-            ],
-            [
-                'text' => 'Não é o mais forte que sobrevive, nem o mais inteligente, mas o que melhor se adapta às mudanças.',
-                'author' => 'Charles Darwin',
+                'category' => 'motivacional',
             ],
             [
                 'text' => 'A persistência é o caminho do êxito.',
                 'author' => 'Charles Chaplin',
-            ],
-        ],
-        'business' => [
-            [
-                'text' => 'Seus clientes mais insatisfeitos são sua maior fonte de aprendizado.',
-                'author' => 'Bill Gates',
+                'category' => 'sucesso',
             ],
             [
-                'text' => 'Inovação distingue entre um líder e um seguidor.',
+                'text' => 'Grandes realizações requerem grandes ambições.',
+                'author' => 'Heródoto',
+                'category' => 'inspiracional',
+            ],
+            [
+                'text' => 'A liderança é a capacidade de transformar visão em realidade.',
+                'author' => 'Warren Bennis',
+                'category' => 'liderança',
+            ],
+            [
+                'text' => 'Inovação distingue um líder de um seguidor.',
                 'author' => 'Steve Jobs',
-            ],
-            [
-                'text' => 'O cliente é a parte mais importante da linha de produção.',
-                'author' => 'W. Edwards Deming',
-            ],
-            [
-                'text' => 'Uma empresa é conhecida pelos homens que mantém.',
-                'author' => 'James Merrill',
-            ],
-            [
-                'text' => 'Qualidade não é um ato, é um hábito.',
-                'author' => 'Aristóteles',
-            ],
-        ],
-        'life' => [
-            [
-                'text' => 'A vida é o que acontece enquanto você está ocupado fazendo outros planos.',
-                'author' => 'John Lennon',
-            ],
-            [
-                'text' => 'Seja você mesmo; todos os outros já existem.',
-                'author' => 'Oscar Wilde',
-            ],
-            [
-                'text' => 'A vida é realmente simples, mas insistimos em torná-la complicada.',
-                'author' => 'Confúcio',
-            ],
-            [
-                'text' => 'Em vinte anos você ficará mais decepcionado com as coisas que não fez do que com aquelas que fez.',
-                'author' => 'Mark Twain',
-            ],
-            [
-                'text' => 'A felicidade não é algo pronto. Ela vem de suas próprias ações.',
-                'author' => 'Dalai Lama',
-            ],
-        ],
-        'success' => [
-            [
-                'text' => 'O sucesso não é final, o fracasso não é fatal: é a coragem de continuar que conta.',
-                'author' => 'Winston Churchill',
-            ],
-            [
-                'text' => 'Sucesso é ir de fracasso em fracasso sem perder o entusiasmo.',
-                'author' => 'Winston Churchill',
+                'category' => 'empresarial',
             ],
             [
                 'text' => 'O único lugar onde o sucesso vem antes do trabalho é no dicionário.',
                 'author' => 'Vidal Sassoon',
+                'category' => 'motivacional',
             ],
             [
-                'text' => 'Não tenha medo de desistir do bom para perseguir o ótimo.',
-                'author' => 'John D. Rockefeller',
+                'text' => 'Acredite em si mesmo e chegará um dia em que os outros não terão outra escolha senão acreditar com você.',
+                'author' => 'Cynthia Kersey',
+                'category' => 'inspiracional',
             ],
             [
-                'text' => 'O sucesso é uma questão de pendências, não de inteligência.',
-                'author' => 'Thomas Edison',
+                'text' => 'A qualidade nunca é um acidente; é sempre o resultado de um esforço inteligente.',
+                'author' => 'John Ruskin',
+                'category' => 'empresarial',
             ],
-        ],
-    ];
-
-    public function getQuote(string $category = 'motivational'): array
-    {
-        $cacheKey = "quote_{$category}";
-
-        return Cache::remember($cacheKey, 3600, function () use ($category) {
-            // Try to get from external API first
-            $externalQuote = $this->getExternalQuote($category);
-
-            if ($externalQuote) {
-                return $externalQuote;
-            }
-
-            // Fallback to local quotes
-            return $this->getLocalQuote($category);
-        });
-    }
-
-    public function getRandomQuote(): array
-    {
-        $categories = array_keys($this->localQuotes);
-        $randomCategory = $categories[array_rand($categories)];
-
-        return $this->getQuote($randomCategory);
-    }
-
-    public function getDailyQuote(): array
-    {
-        $cacheKey = 'daily_quote_' . date('Y-m-d');
-
-        return Cache::remember($cacheKey, 86400, function () {
-            return $this->getRandomQuote();
-        });
-    }
-
-    public function getQuotesByCategory(string $category, int $limit = 5): array
-    {
-        $quotes = $this->localQuotes[$category] ?? $this->localQuotes['motivational'];
-
-        shuffle($quotes);
-
-        return array_slice($quotes, 0, $limit);
-    }
-
-    public function searchQuotes(string $search): array
-    {
-        $results = [];
-
-        foreach ($this->localQuotes as $category => $quotes) {
-            foreach ($quotes as $quote) {
-                if (
-                    stripos($quote['text'], $search) !== false ||
-                    stripos($quote['author'], $search) !== false
-                ) {
-                    $quote['category'] = $category;
-                    $results[] = $quote;
-                }
-            }
-        }
-
-        return $results;
-    }
-
-    public function getAvailableCategories(): array
-    {
-        return [
-            'motivational' => [
-                'name' => 'Motivacional',
-                'description' => 'Frases para inspirar e motivar',
-                'icon' => '💪',
+            [
+                'text' => 'O fracasso é apenas a oportunidade de começar de novo de forma mais inteligente.',
+                'author' => 'Henry Ford',
+                'category' => 'sucesso',
             ],
-            'business' => [
-                'name' => 'Negócios',
-                'description' => 'Frases sobre empreendedorismo e liderança',
-                'icon' => '💼',
+            [
+                'text' => 'Um líder é aquele que conhece o caminho, segue o caminho e mostra o caminho.',
+                'author' => 'John C. Maxwell',
+                'category' => 'liderança',
             ],
-            'life' => [
-                'name' => 'Vida',
-                'description' => 'Reflexões sobre a vida',
-                'icon' => '🌟',
+            [
+                'text' => 'A disciplina é a ponte entre metas e conquistas.',
+                'author' => 'Jim Rohn',
+                'category' => 'motivacional',
             ],
-            'success' => [
-                'name' => 'Sucesso',
-                'description' => 'Frases sobre conquistas e realizações',
-                'icon' => '🏆',
+            [
+                'text' => 'Não espere por oportunidades extraordinárias. Agarre ocasiões comuns e as torne grandiosas.',
+                'author' => 'Orison Swett Marden',
+                'category' => 'inspiracional',
+            ],
+            [
+                'text' => 'A excelência empresarial é fazer uma coisa comum de uma maneira incomum.',
+                'author' => 'Booker T. Washington',
+                'category' => 'empresarial',
+            ],
+            [
+                'text' => 'O sucesso não é definitivo, o fracasso não é fatal: é a coragem de continuar que conta.',
+                'author' => 'Winston Churchill',
+                'category' => 'sucesso',
+            ],
+            [
+                'text' => 'Liderar é servir os outros.',
+                'author' => 'Ken Blanchard',
+                'category' => 'liderança',
+            ],
+            [
+                'text' => 'A motivação é o que te faz começar. O hábito é o que te mantém em movimento.',
+                'author' => 'Jim Ryun',
+                'category' => 'motivacional',
+            ],
+            [
+                'text' => 'Grandes mentes discutem ideias; mentes medianas discutem eventos; mentes pequenas discutem pessoas.',
+                'author' => 'Eleanor Roosevelt',
+                'category' => 'inspiracional',
+            ],
+            [
+                'text' => 'O cliente nunca está errado.',
+                'author' => 'César Ritz',
+                'category' => 'empresarial',
+            ],
+            [
+                'text' => 'A estrada para o sucesso é sempre em construção.',
+                'author' => 'Lily Tomlin',
+                'category' => 'sucesso',
+            ],
+            [
+                'text' => 'A liderança não é sobre estar no comando. É sobre cuidar daqueles sob sua responsabilidade.',
+                'author' => 'Simon Sinek',
+                'category' => 'liderança',
             ],
         ];
-    }
-
-    public function testConnection(): bool
-    {
-        try {
-            $response = Http::timeout(5)->get('https://api.quotable.io/random');
-            return $response->successful();
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
-
-    private function getExternalQuote(string $category): ?array
-    {
-        try {
-            // Map categories to external API tags
-            $tagMap = [
-                'motivational' => 'motivational',
-                'business' => 'business,entrepreneurship',
-                'life' => 'life,wisdom',
-                'success' => 'success,achievement',
-            ];
-
-            $tags = $tagMap[$category] ?? 'inspirational';
-
-            $response = Http::timeout(10)->get('https://api.quotable.io/random', [
-                'tags' => $tags,
-                'maxLength' => 150,
-            ]);
-
-            if ($response->successful()) {
-                $data = $response->json();
-
-                return [
-                    'text' => $data['content'],
-                    'author' => $data['author'],
-                    'category' => $category,
-                    'source' => 'external',
-                    'background_color' => $this->getRandomColor(),
-                    'text_color' => '#ffffff',
-                ];
-            }
-        } catch (\Exception $e) {
-            // Fall through to local quotes
-        }
-
-        return null;
-    }
-
-    private function getLocalQuote(string $category): array
-    {
-        $quotes = $this->localQuotes[$category] ?? $this->localQuotes['motivational'];
-        $quote = $quotes[array_rand($quotes)];
-
-        return array_merge($quote, [
-            'category' => $category,
-            'source' => 'local',
-            'background_color' => $this->getRandomColor(),
-            'text_color' => '#ffffff',
-        ]);
-    }
-
-    private function getRandomColor(): string
-    {
-        $colors = [
-            '#3498db', // Blue
-            '#e74c3c', // Red
-            '#2ecc71', // Green
-            '#f39c12', // Orange
-            '#9b59b6', // Purple
-            '#1abc9c', // Turquoise
-            '#34495e', // Dark Blue
-            '#e67e22', // Carrot
-            '#27ae60', // Nephritis
-            '#8e44ad', // Wisteria
-        ];
-
-        return $colors[array_rand($colors)];
     }
 }

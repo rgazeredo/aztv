@@ -200,4 +200,9 @@ class Tenant extends Model
     {
         return $this->getCurrentStorageUsage() >= $this->getStorageLimitGb();
     }
+
+    public function quotes(): HasMany
+    {
+        return $this->hasMany(Quote::class);
+    }
 }

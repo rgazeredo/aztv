@@ -441,4 +441,95 @@ class PlayerController extends Controller
 
         return response()->json($analytics);
     }
+
+    public function getCurrentQuote(Request $request)
+    {
+        $player = $this->authenticatePlayer($request);
+
+        if (!$player) {
+            return response()->json([
+                'error' => 'Player not authenticated',
+            ], 401);
+        }
+
+        $quoteService = app(\App\Services\QuoteService::class);
+        $quote = $quoteService->getRandomQuote($player->tenant);
+
+        if (!$quote) {
+            return response()->json([
+                'message' => 'No quotes available',
+                'quote' => null,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'quote' => [
+                'id' => $quote->id,
+                'text' => $quote->text,
+                'author' => $quote->author,
+                'category' => $quote->category,
+                'display_duration' => $quote->display_duration,
+                'created_at' => $quote->created_at,
+            ],
+            'timing' => [
+                'display_duration' => $quote->display_duration,
+                'transition_effect' => 'fade',
+            ],
+        ]);
+    }
+
+    public function getNextQuote(Request $request)
+    {
+        $player = $this->authenticatePlayer($request);
+
+        if (!$player) {
+            return response()->json([
+                'error' => 'Player not authenticated',
+            ], 401);
+        }
+
+        $currentQuoteId = $request->input('current_quote_id');
+        $options = [
+            'mode' => $request->input('mode', 'sequential'),
+            'category' => $request->input('category'),
+        ];
+
+        $quoteService = app(\App\Services\QuoteService::class);
+        $quote = $quoteService->getNextQuote($player->tenant, $currentQuoteId, $options);
+
+        if (!$quote) {
+            return response()->json([
+                'message' => 'No more quotes available',
+                'quote' => null,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'quote' => [
+                'id' => $quote->id,
+                'text' => $quote->text,
+                'author' => $quote->author,
+                'category' => $quote->category,
+                'display_duration' => $quote->display_duration,
+                'created_at' => $quote->created_at,
+            ],
+            'timing' => [
+                'display_duration' => $quote->display_duration,
+                'transition_effect' => 'fade',
+            ],
+        ]);
+    }
+
+    private function authenticatePlayer(Request $request): ?Player
+    {
+        $token = $request->header('X-Player-Token') ?? $request->input('token');
+
+        if (!$token) {
+            return null;
+        }
+
+        return Player::where('token', $token)->first();
+    }
 }
