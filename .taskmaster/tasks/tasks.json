@@ -318,7 +318,7 @@
         "description": "Implementar o controller DashboardController no painel do cliente com métodos para exibir métricas de players online/offline, storage usado, últimos conteúdos e estatísticas gerais do tenant.",
         "details": "Criar arquivo `app/Http/Controllers/DashboardController.php` usando `php artisan make:controller DashboardController` com os seguintes métodos:\n\n**Método index():**\n- Retornar view `client.dashboard` com dados do tenant atual\n- Calcular estatísticas de players: total, online (últimas 24h), offline\n- Calcular uso de storage: espaço usado, limite do plano, percentual utilizado\n- Buscar últimos 5 conteúdos/mídias adicionados com thumbnails\n- Buscar últimas 3 playlists criadas ou atualizadas\n- Incluir estatísticas de downloads de APK do tenant\n- Aplicar TenantScope automaticamente para dados do tenant\n\n**Método getMetrics():**\n- Endpoint AJAX para atualizar métricas em tempo real\n- Retornar JSON com contadores atualizados\n- Implementar cache de 5 minutos para otimizar performance\n\n**Cálculos de métricas:**\n- Players online: `Player::where('tenant_id', auth()->user()->tenant_id)->where('last_seen_at', '>=', now()->subDay())->count()`\n- Storage usado: somar tamanho de todos os arquivos de mídia do tenant\n- Últimos conteúdos: `Media::where('tenant_id', auth()->user()->tenant_id)->latest()->limit(5)->get()`\n\n**Middleware aplicado:**\n- `auth` - usuário logado\n- `tenant.scope` - dados do tenant atual apenas\n- `role:client` - apenas usuários cliente",
         "testStrategy": "1. Criar teste de feature `php artisan make:test DashboardControllerTest` para verificar acesso restrito ao tenant correto\n2. Testar método `index()`: verificar se retorna view correta com todas as métricas calculadas\n3. Criar dados de teste: players com diferentes status e `last_seen_at`, arquivos de mídia com tamanhos variados\n4. Testar cálculo de players online/offline com diferentes cenários de tempo\n5. Testar cálculo de storage usado somando tamanhos de arquivos do tenant\n6. Testar método `getMetrics()`: verificar retorno JSON com estrutura correta\n7. Testar aplicação do TenantScope: verificar que dados de outros tenants não aparecem\n8. Testar cache das métricas: verificar se dados são cacheados por 5 minutos\n9. Testar middleware de autorização: usuários admin não devem acessar, apenas clients do tenant correto",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           1,
           9,
@@ -861,7 +861,7 @@
     "metadata": {
       "created": "2025-09-20T02:30:52.097Z",
       "description": "Default tasks context",
-      "updated": "2025-09-20T21:32:15.343Z"
+      "updated": "2025-09-20T21:36:35.598Z"
     }
   }
 }

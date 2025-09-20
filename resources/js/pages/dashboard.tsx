@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
 import { type BreadcrumbItem, type User } from '@/types';
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import {
     IconBuilding,
     IconUsers,
@@ -17,10 +17,82 @@ import {
     IconUsersGroup,
     IconChartBar,
     IconCash,
-    IconShield
+    IconShield,
+    IconDatabase,
+    IconDevices,
+    IconPlaylist,
+    IconPhoto,
+    IconClock,
+    IconRefresh
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
+import { useState, useEffect } from 'react';
 
+
+interface DashboardMetrics {
+    players: {
+        total: number;
+        online: number;
+        offline: number;
+        online_percentage: number;
+    };
+    storage: {
+        used: number;
+        used_formatted: string;
+        limit: number;
+        limit_formatted: string;
+        percentage: number;
+        available: number;
+        available_formatted: string;
+    };
+    content: {
+        total_media: number;
+        total_playlists: number;
+        media_this_week: number;
+        playlists_this_week: number;
+    };
+    activity: {
+        new_media_this_week: number;
+        new_playlists_this_week: number;
+        active_players_today: number;
+    };
+    apk_downloads: {
+        active_apk_version: string;
+        active_apk_size: string;
+        last_apk_update: string;
+    };
+}
+
+interface RecentData {
+    recent_media: Array<{
+        id: number;
+        name: string;
+        filename: string;
+        mime_type: string;
+        size: string;
+        thumbnail_url?: string;
+        created_at: string;
+        created_at_human: string;
+    }>;
+    recent_playlists: Array<{
+        id: number;
+        name: string;
+        description?: string;
+        items_count: number;
+        updated_at: string;
+        updated_at_human: string;
+    }>;
+    recent_player_activity: Array<{
+        id: number;
+        name: string;
+        alias?: string;
+        status: string;
+        is_online: boolean;
+        last_seen: string;
+        last_seen_human: string;
+        ip_address?: string;
+    }>;
+}
 
 interface DashboardProps {
     auth: {
@@ -33,10 +105,49 @@ interface DashboardProps {
             };
         };
     };
+    metrics?: DashboardMetrics;
+    recentData?: RecentData;
+    tenant?: {
+        id: number;
+        name: string;
+        slug: string;
+    };
 }
 
-function ClientDashboard({ tenant }: { tenant?: DashboardProps['auth']['user']['tenant'] }) {
+function ClientDashboard({
+    tenant,
+    metrics,
+    recentData
+}: {
+    tenant?: DashboardProps['auth']['user']['tenant'];
+    metrics?: DashboardMetrics;
+    recentData?: RecentData;
+}) {
     const { t } = useTranslation();
+    const [currentMetrics, setCurrentMetrics] = useState<DashboardMetrics | undefined>(metrics);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const refreshMetrics = async () => {
+        setRefreshing(true);
+        try {
+            const response = await fetch('/dashboard/metrics');
+            const data = await response.json();
+            if (data.success) {
+                setCurrentMetrics(data.metrics);
+            }
+        } catch (error) {
+            console.error('Failed to refresh metrics:', error);
+        } finally {
+            setRefreshing(false);
+        }
+    };
+
+    // Auto refresh metrics every 5 minutes
+    useEffect(() => {
+        const interval = setInterval(refreshMetrics, 5 * 60 * 1000);
+        return () => clearInterval(interval);
+    }, []);
+
     return (
         <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
             {tenant && (
@@ -46,141 +157,252 @@ function ClientDashboard({ tenant }: { tenant?: DashboardProps['auth']['user']['
                             <IconBuilding className="h-5 w-5" />
                             {tenant.name}
                         </CardTitle>
-                        <CardDescription>
-                            {t('dashboard.organizationPanel')}
+                        <CardDescription className="flex items-center justify-between">
+                            <span>Painel de Controle AZ TV</span>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={refreshMetrics}
+                                disabled={refreshing}
+                                className="h-6"
+                            >
+                                <IconRefresh className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                            </Button>
                         </CardDescription>
                     </CardHeader>
                 </Card>
             )}
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+            {/* Metrics Cards */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <Card>
-                    <CardHeader>
-                        <CardTitle className="text-lg">{t('dashboard.myProjects')}</CardTitle>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <IconDevices className="h-5 w-5" />
+                            Players
+                        </CardTitle>
                         <CardDescription>
-                            {t('dashboard.trackActiveProjects')}
+                            Dispositivos conectados
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold text-blue-600 mb-2">
-                            5
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <div className="text-2xl font-bold text-blue-600 mb-1">
+                                    {currentMetrics?.players.online || 0}
+                                </div>
+                                <p className="text-sm text-gray-600">
+                                    de {currentMetrics?.players.total || 0} total
+                                </p>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-sm font-medium text-green-600">
+                                    {currentMetrics?.players.online_percentage || 0}% online
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                    {currentMetrics?.players.offline || 0} offline
+                                </div>
+                            </div>
                         </div>
-                        <p className="text-sm text-gray-600">
-                            {t('dashboard.activeProjects')}
-                        </p>
                     </CardContent>
                 </Card>
 
                 <Card>
-                    <CardHeader>
-                        <CardTitle className="text-lg">{t('dashboard.progress')}</CardTitle>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <IconDatabase className="h-5 w-5" />
+                            Storage
+                        </CardTitle>
                         <CardDescription>
-                            {t('dashboard.yourOverallProgress')}
+                            Uso de armazenamento
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold text-green-600 mb-2">
-                            75%
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                                <span>Usado:</span>
+                                <span className="font-medium">{currentMetrics?.storage.used_formatted || '0 B'}</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div
+                                    className="bg-blue-600 h-2 rounded-full"
+                                    style={{ width: `${Math.min(currentMetrics?.storage.percentage || 0, 100)}%` }}
+                                ></div>
+                            </div>
+                            <div className="flex justify-between text-xs text-gray-500">
+                                <span>{currentMetrics?.storage.percentage || 0}% usado</span>
+                                <span>Limite: {currentMetrics?.storage.limit_formatted || 'N/A'}</span>
+                            </div>
                         </div>
-                        <p className="text-sm text-gray-600">
-                            {t('dashboard.completed')}
-                        </p>
                     </CardContent>
                 </Card>
 
                 <Card>
-                    <CardHeader>
-                        <CardTitle className="text-lg">{t('dashboard.nextTask')}</CardTitle>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <IconPhoto className="h-5 w-5" />
+                            Conteúdo
+                        </CardTitle>
                         <CardDescription>
-                            {t('dashboard.yourNextActivity')}
+                            Mídia e playlists
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-lg font-semibold text-gray-900 mb-1">
-                            {t('dashboard.projectManagement')}
+                        <div className="space-y-2">
+                            <div className="flex justify-between">
+                                <span className="text-sm text-gray-600">Mídias:</span>
+                                <span className="font-medium">{currentMetrics?.content.total_media || 0}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-sm text-gray-600">Playlists:</span>
+                                <span className="font-medium">{currentMetrics?.content.total_playlists || 0}</span>
+                            </div>
+                            <div className="text-xs text-green-600 mt-1">
+                                +{currentMetrics?.activity.new_media_this_week || 0} mídia(s) esta semana
+                            </div>
                         </div>
-                        <p className="text-sm text-gray-600">
-                            {t('dashboard.today')}, 14:00
-                        </p>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <IconTrendingUp className="h-5 w-5" />
+                            Atividade
+                        </CardTitle>
+                        <CardDescription>
+                            Esta semana
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-2">
+                            <div className="text-2xl font-bold text-green-600 mb-1">
+                                {currentMetrics?.activity.active_players_today || 0}
+                            </div>
+                            <p className="text-sm text-gray-600">
+                                players ativos hoje
+                            </p>
+                            <div className="text-xs text-gray-500">
+                                +{currentMetrics?.activity.new_playlists_this_week || 0} playlist(s) criada(s)
+                            </div>
+                        </div>
                     </CardContent>
                 </Card>
             </div>
 
             <div className="grid lg:grid-cols-2 gap-6">
+                {/* Recent Media */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>{t('dashboard.recentActivities')}</CardTitle>
+                        <CardTitle>Mídias Recentes</CardTitle>
                         <CardDescription>
-                            {t('dashboard.yourLatestActivities')}
+                            Últimos arquivos adicionados
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                <div>
-                                    <h4 className="font-medium">{t('dashboard.taskManagement')}</h4>
-                                    <p className="text-sm text-gray-600">Task 15 - {t('dashboard.projectPlanning')}</p>
+                            {recentData?.recent_media?.map((media) => (
+                                <div key={media.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                    {media.thumbnail_url ? (
+                                        <img
+                                            src={media.thumbnail_url}
+                                            alt={media.name}
+                                            className="w-12 h-12 object-cover rounded"
+                                        />
+                                    ) : (
+                                        <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">
+                                            <IconPhoto className="h-6 w-6 text-gray-400" />
+                                        </div>
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                        <h4 className="font-medium truncate">{media.name}</h4>
+                                        <p className="text-sm text-gray-600">{media.size} • {media.created_at_human}</p>
+                                    </div>
                                 </div>
-                                <Badge variant="secondary">{t('dashboard.completedBadge')}</Badge>
-                            </div>
-                            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                <div>
-                                    <h4 className="font-medium">{t('dashboard.analytics')}</h4>
-                                    <p className="text-sm text-gray-600">Report 8 - {t('dashboard.reports')}</p>
-                                </div>
-                                <Badge variant="secondary">{t('dashboard.completedBadge')}</Badge>
-                            </div>
-                            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                                <div>
-                                    <h4 className="font-medium">{t('dashboard.projectManagement')}</h4>
-                                    <p className="text-sm text-gray-600">Flow 12 - {t('dashboard.workflows')}</p>
-                                </div>
-                                <Badge>{t('dashboard.inProgressBadge')}</Badge>
-                            </div>
+                            ))}
+                            {!recentData?.recent_media?.length && (
+                                <p className="text-gray-500 text-center py-4">Nenhuma mídia encontrada</p>
+                            )}
                         </div>
                     </CardContent>
                 </Card>
 
+                {/* Recent Activity */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>{t('dashboard.quickActions')}</CardTitle>
+                        <CardTitle>Atividade dos Players</CardTitle>
                         <CardDescription>
-                            {t('dashboard.quickAccessToMainFeatures')}
+                            Status recente dos dispositivos
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid grid-cols-2 gap-4">
-                            <Button className="h-20 flex-col gap-2">
-                                <IconBook className="h-5 w-5" />
-                                <div className="text-center">
-                                    <span className="text-sm">{t('dashboard.view')}</span>
-                                    <br />
-                                    <span className="font-semibold">{t('dashboard.projects')}</span>
+                        <div className="space-y-4">
+                            {recentData?.recent_player_activity?.map((player) => (
+                                <div key={player.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-3 h-3 rounded-full ${player.is_online ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                        <div>
+                                            <h4 className="font-medium">{player.name}</h4>
+                                            <p className="text-sm text-gray-600">{player.last_seen_human}</p>
+                                        </div>
+                                    </div>
+                                    <Badge variant={player.is_online ? 'default' : 'secondary'}>
+                                        {player.is_online ? 'Online' : 'Offline'}
+                                    </Badge>
                                 </div>
-                            </Button>
-                            <Button variant="outline" className="h-20 flex-col gap-2">
-                                <IconUser className="h-5 w-5" />
-                                <div className="text-center">
-                                    <span className="text-sm">{t('dashboard.my')}</span>
-                                    <br />
-                                    <span className="font-semibold">{t('dashboard.profile')}</span>
-                                </div>
-                            </Button>
-                            <Button variant="outline" className="h-20 flex-col gap-2">
-                                <IconHeadphones className="h-5 w-5" />
-                                <div className="text-center">
-                                    <span className="text-sm">{t('dashboard.support')}</span>
-                                    <br />
-                                    <span className="font-semibold">{t('dashboard.contact')}</span>
-                                </div>
-                            </Button>
-                            <Button variant="outline" className="h-20 flex-col gap-2">
-                                <IconSettings className="h-5 w-5" />
-                                <span className="font-semibold">{t('dashboard.settings')}</span>
-                            </Button>
+                            ))}
+                            {!recentData?.recent_player_activity?.length && (
+                                <p className="text-gray-500 text-center py-4">Nenhum player encontrado</p>
+                            )}
                         </div>
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Quick Actions */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Ações Rápidas</CardTitle>
+                    <CardDescription>
+                        Acesso rápido às principais funcionalidades
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <Button
+                            className="h-20 flex-col gap-2"
+                            onClick={() => router.visit('/players')}
+                        >
+                            <IconDevices className="h-5 w-5" />
+                            <span className="font-semibold">Players</span>
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="h-20 flex-col gap-2"
+                            onClick={() => router.visit('/media')}
+                        >
+                            <IconPhoto className="h-5 w-5" />
+                            <span className="font-semibold">Mídia</span>
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="h-20 flex-col gap-2"
+                            onClick={() => router.visit('/playlists')}
+                        >
+                            <IconPlaylist className="h-5 w-5" />
+                            <span className="font-semibold">Playlists</span>
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="h-20 flex-col gap-2"
+                            onClick={() => router.visit('/activation')}
+                        >
+                            <IconSettings className="h-5 w-5" />
+                            <span className="font-semibold">Ativação</span>
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }
@@ -398,7 +620,15 @@ function AdminDashboard({ allTenants }: { allTenants?: Array<{ id: number; name:
     );
 }
 
-export default function Dashboard({ auth, tenants }: DashboardProps & { tenants?: Array<{ id: number; name: string; slug: string; users_count: number; is_active: boolean }> }) {
+export default function Dashboard({
+    auth,
+    tenants,
+    metrics,
+    recentData,
+    tenant
+}: DashboardProps & {
+    tenants?: Array<{ id: number; name: string; slug: string; users_count: number; is_active: boolean }>
+}) {
     const isAdmin = auth.user.role === 'admin';
     const { t } = useTranslation();
 
@@ -412,7 +642,15 @@ export default function Dashboard({ auth, tenants }: DashboardProps & { tenants?
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${t('dashboard.title')} ${isAdmin ? `- ${t('dashboard.administration')}` : auth.user.tenant ? `- ${auth.user.tenant.name}` : `- ${t('dashboard.clientAdmin')}`}`} />
-            {isAdmin ? <AdminDashboard allTenants={tenants} /> : <ClientDashboard tenant={auth.user.tenant} />}
+            {isAdmin ? (
+                <AdminDashboard allTenants={tenants} />
+            ) : (
+                <ClientDashboard
+                    tenant={auth.user.tenant || tenant}
+                    metrics={metrics}
+                    recentData={recentData}
+                />
+            )}
         </AppLayout>
     );
 }

@@ -13,6 +13,7 @@ use App\Http\Controllers\MediaController;
 use App\Http\Controllers\PlaylistController;
 use App\Http\Controllers\ContentModuleController;
 use App\Http\Controllers\ActivationController;
+use App\Http\Controllers\DashboardController;
 
 // API routes for pricing
 Route::get('/api/pricing/plans', [PricingController::class, 'getPlans'])->name('api.pricing.plans');
@@ -61,13 +62,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
             return redirect()->route('admin.dashboard');
         }
 
-        // Se é client, carregar com tenant
+        // Se é client, usar DashboardController
         if ($user->isClient()) {
-            $user->load('tenant');
+            return app(DashboardController::class)->index(request());
         }
 
         return Inertia::render('dashboard');
     })->name('dashboard');
+
+    // Dashboard metrics endpoint for AJAX calls
+    Route::get('dashboard/metrics', [DashboardController::class, 'getMetrics'])
+        ->name('dashboard.metrics')
+        ->middleware('tenant');
 
     // Admin Routes
     Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
