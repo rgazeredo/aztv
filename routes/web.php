@@ -12,6 +12,7 @@ use App\Http\Controllers\PlayerController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\PlaylistController;
 use App\Http\Controllers\ContentModuleController;
+use App\Http\Controllers\ActivationController;
 
 // API routes for pricing
 Route::get('/api/pricing/plans', [PricingController::class, 'getPlans'])->name('api.pricing.plans');
@@ -46,6 +47,10 @@ Route::get('/subscription/cancel/{tenant?}', [SubscriptionController::class, 'ca
 
 Route::post('/subscription/retry/{tenant}', [SubscriptionController::class, 'retry'])
     ->name('subscription.retry');
+
+// Public activation routes (no auth required)
+Route::get('/activation/{token}', [ActivationController::class, 'show'])->name('activation.show');
+Route::get('/activation/{token}/download', [ActivationController::class, 'download'])->name('activation.download');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {
@@ -146,6 +151,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('upload/info', [\App\Http\Controllers\FileUploadController::class, 'getUploadInfo'])->name('upload.info');
         Route::post('upload/validate', [\App\Http\Controllers\FileUploadController::class, 'validateUpload'])->name('upload.validate');
+
+        // Activation Token Management
+        Route::resource('activation', ActivationController::class)->only(['index', 'store']);
+        Route::delete('activation/{token}/revoke', [ActivationController::class, 'revoke'])->name('activation.revoke');
+        Route::post('activation/{token}/regenerate-qr', [ActivationController::class, 'regenerateQR'])->name('activation.regenerate-qr');
     });
 
     Route::patch('settings/theme', function () {
