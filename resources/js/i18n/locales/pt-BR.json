@@ -1,0 +1,185 @@
+{
+    "meta": {
+        "title": "AZTV - Plataforma SaaS para Transformar Seu Negócio"
+    },
+    "navigation": {
+        "features": "Recursos",
+        "pricing": "Preços",
+        "contact": "Contato",
+        "login": "Entrar",
+        "language": "PT",
+        "platform": "Plataforma"
+    },
+    "hero": {
+        "badge": "Nova plataforma",
+        "title": "Transforme Seu Negócio com Nossa Plataforma SaaS",
+        "description": "Conecte, automatize e faça seu negócio crescer com nossa poderosa plataforma multi-tenant. Solução completa para gestão empresarial.",
+        "startFreeDemo": "Começar Demo Grátis",
+        "viewPricing": "Ver Preços",
+        "noSetupRequired": "Sem configuração necessária",
+        "support247": "Suporte 24/7",
+        "interactiveDemo": "Demo Interativo",
+        "testPlatformFree": "Teste nossa plataforma gratuitamente"
+    },
+    "stats": {
+        "title": "Confiado por Milhares",
+        "description": "Junte-se às empresas que já estão transformando seus negócios",
+        "customersServed": "Clientes Atendidos",
+        "transactionsProcessed": "Transações Processadas",
+        "satisfaction": "Satisfação",
+        "uptime": "Uptime"
+    },
+    "features": {
+        "title": "Tudo que Você Precisa para Ter Sucesso",
+        "description": "Desde automação de processos até análise avançada, fornecemos todas as ferramentas que seu negócio precisa para crescer.",
+        "automationTools": {
+            "title": "Ferramentas de Automação",
+            "description": "Automatize processos complexos e melhore a eficiência da sua equipe com fluxos de trabalho inteligentes."
+        },
+        "completeApi": {
+            "title": "API Completa",
+            "description": "Acesso total à nossa API com webhooks, monitoramento em tempo real e documentação completa."
+        },
+        "analytics": {
+            "title": "Análise Avançada",
+            "description": "Insights poderosos e relatórios detalhados para tomar decisões baseadas em dados."
+        },
+        "enterpriseSecurity": {
+            "title": "Segurança Empresarial",
+            "description": "Seus dados são protegidos com os mais altos padrões de segurança utilizados por grandes corporações."
+        },
+        "highPerformance": {
+            "title": "Alta Performance",
+            "description": "99.9% de uptime garantido com infraestrutura proprietária para suportar grandes volumes."
+        },
+        "specializedSupport": {
+            "title": "Suporte Especializado",
+            "description": "Nossa equipe de especialistas está pronta para ajudar você a alcançar os melhores resultados."
+        }
+    },
+    "pricing": {
+        "title": "Escolha Seu Plano",
+        "description": "Preços transparentes que crescem com seu negócio. Todos os planos incluem suporte completo.",
+        "loadingPlans": "Carregando planos...",
+        "errorLoading": "Erro ao carregar planos:",
+        "showingDefaultPlans": "Mostrando planos padrão",
+        "mostPopular": "Mais Popular",
+        "month": "mês",
+        "year": "ano",
+        "choosePlan": "Escolher Plano",
+        "customPlanQuestion": "Precisa de um plano personalizado para seu negócio?",
+        "talkToSales": "Fale com Vendas"
+    },
+    "contact": {
+        "title": "Pronto para Começar?",
+        "description": "Agende uma demonstração ou entre em contato com nossa equipe para descobrir como a AZTV pode transformar seu negócio.",
+        "scheduleDemo": "Agendar Demo",
+        "fullName": "Nome Completo",
+        "fullNamePlaceholder": "Seu nome completo",
+        "email": "Email",
+        "emailPlaceholder": "seu@email.com",
+        "company": "Empresa",
+        "companyPlaceholder": "Nome da empresa",
+        "phone": "Telefone",
+        "phonePlaceholder": "(11) 99999-9999",
+        "scheduleDemoButton": "Agendar Demo",
+        "getInTouch": "Entre em Contato",
+        "quickResponse": {
+            "title": "Resposta Rápida",
+            "description": "Respondemos todas as consultas em até 24 horas"
+        },
+        "specializedSupport": {
+            "title": "Suporte Especializado",
+            "description": "Segunda a sexta, das 9h às 18h"
+        },
+        "personalizedDemo": {
+            "title": "Demo Personalizada",
+            "description": "Sessões de demonstração personalizadas às necessidades do seu negócio"
+        }
+    },
+    "footer": {
+        "description": "Transforme seu negócio com a plataforma SaaS mais completa e inovadora do mercado.",
+        "quickLinks": "Links Rápidos",
+        "features": "Recursos",
+        "pricing": "Preços",
+        "contact": "Contato",
+        "legal": "Legal",
+        "privacyPolicy": "Política de Privacidade",
+        "termsOfService": "Termos de Serviço",
+        "copyright": "© 2024 AZTV. Todos os direitos reservados."
+    },
+    "dashboard": {
+        "title": "Dashboard",
+        "organizationPanel": "Painel da sua organização",
+        "globalAdministration": "Administração Global",
+        "tenantAdminPanel": "Painel de administração de todos os tenants",
+        "clientAdmin": "Cliente",
+        "administration": "Administração",
+        "myProjects": "Meus Projetos",
+        "trackActiveProjects": "Acompanhe seus projetos ativos",
+        "activeProjects": "Projetos ativos",
+        "progress": "Progresso",
+        "yourOverallProgress": "Seu progresso geral",
+        "completed": "Completado",
+        "nextTask": "Próxima Tarefa",
+        "yourNextActivity": "Sua próxima atividade",
+        "projectManagement": "Gerenciamento",
+        "today": "Hoje",
+        "recentActivities": "Atividades Recentes",
+        "yourLatestActivities": "Suas últimas atividades",
+        "taskManagement": "Gestão de Tarefas",
+        "projectPlanning": "Planejamento",
+        "analytics": "Análise",
+        "reports": "Relatórios",
+        "workflows": "Fluxos",
+        "completedBadge": "Concluída",
+        "inProgressBadge": "Em andamento",
+        "quickActions": "Ações Rápidas",
+        "quickAccessToMainFeatures": "Acesso rápido às principais funcionalidades",
+        "view": "Ver",
+        "projects": "Projetos",
+        "my": "Meu",
+        "profile": "Perfil",
+        "support": "Suporte",
+        "contact": "Contato",
+        "settings": "Configurações",
+        "totalTenants": "Total Tenants",
+        "activeOrganizations": "Organizações ativas",
+        "totalUsers": "Total Usuários",
+        "usersAllTenants": "Usuários em todos os tenants",
+        "allTenants": "Todos os tenants",
+        "largestTenant": "Maior Tenant",
+        "organizationWithMostUsers": "Organização com mais usuários",
+        "users": "usuários",
+        "system": "Sistema",
+        "generalStatus": "Status geral",
+        "operational": "Operacional",
+        "allSystems": "Todos os sistemas",
+        "activeTenants": "Tenants Ativos",
+        "platformRegisteredOrganizations": "Organizações registradas na plataforma",
+        "user": "usuário",
+        "active": "Ativo",
+        "inactive": "Inativo",
+        "noTenantsFound": "Nenhum tenant encontrado",
+        "adminActions": "Ações Admin",
+        "platformManagement": "Gerenciamento da plataforma",
+        "manageTenants": "Gerenciar Tenants",
+        "createNewTenant": "Criar Novo Tenant",
+        "globalReports": "Relatórios Globais",
+        "systemSettings": "Configurações Sistema",
+        "activityLogs": "Logs de Atividade",
+        "recentActivity": "Atividade Recente",
+        "lastSystemActions": "Últimas ações no sistema",
+        "newUserRegistered": "Novo usuário cadastrado",
+        "minutesAgo": "há {minutes} minutos",
+        "hourAgo": "há {hours} hora",
+        "hoursAgo": "há {hours} horas",
+        "projectCreatedBy": "Projeto criado por {user}",
+        "paymentProcessed": "Pagamento processado",
+        "systemAlerts": "Alertas do Sistema",
+        "importantNotifications": "Notificações importantes",
+        "backupScheduled": "Backup agendado para hoje às 23:00",
+        "systemRunningNormally": "Sistema funcionando normalmente",
+        "updateAvailable": "Atualização disponível v2.1.0"
+    }
+}

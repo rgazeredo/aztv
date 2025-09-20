@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "WebFetch(domain:docs.uazapi.com)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

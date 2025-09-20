@@ -1,0 +1,185 @@
+{
+    "meta": {
+        "title": "AZTV - SaaS Platform to Transform Your Business"
+    },
+    "navigation": {
+        "features": "Features",
+        "pricing": "Pricing",
+        "contact": "Contact",
+        "login": "Login",
+        "language": "EN",
+        "platform": "Platform"
+    },
+    "hero": {
+        "badge": "New platform",
+        "title": "Transform Your Business with Our SaaS Platform",
+        "description": "Connect, automate and grow your business with our powerful multi-tenant platform. Complete solution for business management.",
+        "startFreeDemo": "Start Free Demo",
+        "viewPricing": "View Pricing",
+        "noSetupRequired": "No setup required",
+        "support247": "24/7 Support",
+        "interactiveDemo": "Interactive Demo",
+        "testPlatformFree": "Test our platform for free"
+    },
+    "stats": {
+        "title": "Trusted by Thousands",
+        "description": "Join the companies that are already transforming their businesses",
+        "customersServed": "Customers Served",
+        "transactionsProcessed": "Transactions Processed",
+        "satisfaction": "Satisfaction",
+        "uptime": "Uptime"
+    },
+    "features": {
+        "title": "Everything You Need to Succeed",
+        "description": "From process automation to advanced analytics, we provide all the tools your business needs to grow.",
+        "automationTools": {
+            "title": "Automation Tools",
+            "description": "Automate complex processes and improve your team's efficiency with intelligent workflows."
+        },
+        "completeApi": {
+            "title": "Complete API",
+            "description": "Full access to our API with webhooks, real-time monitoring and complete documentation."
+        },
+        "analytics": {
+            "title": "Advanced Analytics",
+            "description": "Powerful insights and detailed reports to make data-driven decisions."
+        },
+        "enterpriseSecurity": {
+            "title": "Enterprise Security",
+            "description": "Your data is protected with the highest security standards used by large corporations."
+        },
+        "highPerformance": {
+            "title": "High Performance",
+            "description": "99.9% guaranteed uptime with proprietary infrastructure to support large volumes."
+        },
+        "specializedSupport": {
+            "title": "Specialized Support",
+            "description": "Our team of experts is ready to help you achieve the best results."
+        }
+    },
+    "pricing": {
+        "title": "Choose Your Plan",
+        "description": "Transparent pricing that grows with your business. All plans include full support.",
+        "loadingPlans": "Loading plans...",
+        "errorLoading": "Error loading plans:",
+        "showingDefaultPlans": "Showing default plans",
+        "mostPopular": "Most Popular",
+        "month": "month",
+        "year": "year",
+        "choosePlan": "Choose Plan",
+        "customPlanQuestion": "Need a custom plan for your business?",
+        "talkToSales": "Talk to Sales"
+    },
+    "contact": {
+        "title": "Ready to Get Started?",
+        "description": "Schedule a demonstration or contact our team to discover how AZTV can transform your business.",
+        "scheduleDemo": "Schedule Demo",
+        "fullName": "Full Name",
+        "fullNamePlaceholder": "Your full name",
+        "email": "Email",
+        "emailPlaceholder": "your@email.com",
+        "company": "Company",
+        "companyPlaceholder": "Company name",
+        "phone": "Phone",
+        "phonePlaceholder": "(11) 99999-9999",
+        "scheduleDemoButton": "Schedule Demo",
+        "getInTouch": "Get in Touch",
+        "quickResponse": {
+            "title": "Quick Response",
+            "description": "We respond to all inquiries within 24 hours"
+        },
+        "specializedSupport": {
+            "title": "Specialized Support",
+            "description": "Monday to Friday, 9am to 6pm"
+        },
+        "personalizedDemo": {
+            "title": "Personalized Demo",
+            "description": "Demonstration sessions customized to your business needs"
+        }
+    },
+    "footer": {
+        "description": "Transform your business with the most complete and innovative SaaS platform on the market.",
+        "quickLinks": "Quick Links",
+        "features": "Features",
+        "pricing": "Pricing",
+        "contact": "Contact",
+        "legal": "Legal",
+        "privacyPolicy": "Privacy Policy",
+        "termsOfService": "Terms of Service",
+        "copyright": "© 2024 AZTV. All rights reserved."
+    },
+    "dashboard": {
+        "title": "Dashboard",
+        "organizationPanel": "Your organization panel",
+        "globalAdministration": "Global Administration",
+        "tenantAdminPanel": "Administration panel for all tenants",
+        "clientAdmin": "Client",
+        "administration": "Administration",
+        "myProjects": "My Projects",
+        "trackActiveProjects": "Track your active projects",
+        "activeProjects": "Active projects",
+        "progress": "Progress",
+        "yourOverallProgress": "Your overall progress",
+        "completed": "Completed",
+        "nextTask": "Next Task",
+        "yourNextActivity": "Your next activity",
+        "projectManagement": "Management",
+        "today": "Today",
+        "recentActivities": "Recent Activities",
+        "yourLatestActivities": "Your latest activities",
+        "taskManagement": "Task Management",
+        "projectPlanning": "Planning",
+        "analytics": "Analytics",
+        "reports": "Reports",
+        "workflows": "Workflows",
+        "completedBadge": "Completed",
+        "inProgressBadge": "In Progress",
+        "quickActions": "Quick Actions",
+        "quickAccessToMainFeatures": "Quick access to main features",
+        "view": "View",
+        "projects": "Projects",
+        "my": "My",
+        "profile": "Profile",
+        "support": "Support",
+        "contact": "Contact",
+        "settings": "Settings",
+        "totalTenants": "Total Tenants",
+        "activeOrganizations": "Active organizations",
+        "totalUsers": "Total Users",
+        "usersAllTenants": "Users across all tenants",
+        "allTenants": "All tenants",
+        "largestTenant": "Largest Tenant",
+        "organizationWithMostUsers": "Organization with most users",
+        "users": "users",
+        "system": "System",
+        "generalStatus": "General status",
+        "operational": "Operational",
+        "allSystems": "All systems",
+        "activeTenants": "Active Tenants",
+        "platformRegisteredOrganizations": "Organizations registered on the platform",
+        "user": "user",
+        "active": "Active",
+        "inactive": "Inactive",
+        "noTenantsFound": "No tenants found",
+        "adminActions": "Admin Actions",
+        "platformManagement": "Platform management",
+        "manageTenants": "Manage Tenants",
+        "createNewTenant": "Create New Tenant",
+        "globalReports": "Global Reports",
+        "systemSettings": "System Settings",
+        "activityLogs": "Activity Logs",
+        "recentActivity": "Recent Activity",
+        "lastSystemActions": "Latest system actions",
+        "newUserRegistered": "New user registered",
+        "minutesAgo": "{minutes} minutes ago",
+        "hourAgo": "{hours} hour ago",
+        "hoursAgo": "{hours} hours ago",
+        "projectCreatedBy": "Project created by {user}",
+        "paymentProcessed": "Payment processed",
+        "systemAlerts": "System Alerts",
+        "importantNotifications": "Important notifications",
+        "backupScheduled": "Backup scheduled for today at 11:00 PM",
+        "systemRunningNormally": "System running normally",
+        "updateAvailable": "Update available v2.1.0"
+    }
+}
