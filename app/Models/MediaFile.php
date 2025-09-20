@@ -27,6 +27,8 @@ class MediaFile extends Model
         'folder',
         'tags',
         'status',
+        'processing_status',
+        'processed_at',
     ];
 
     protected $casts = [
@@ -34,6 +36,7 @@ class MediaFile extends Model
         'size' => 'integer',
         'duration' => 'integer',
         'display_time' => 'integer',
+        'processed_at' => 'datetime',
     ];
 
     // Relationships
@@ -89,6 +92,32 @@ class MediaFile extends Model
         return $this->status === 'error';
     }
 
+    public function isVideoProcessing(): bool
+    {
+        return $this->processing_status === 'processing';
+    }
+
+    public function isVideoProcessed(): bool
+    {
+        return $this->processing_status === 'completed';
+    }
+
+    public function videoProcessingFailed(): bool
+    {
+        return $this->processing_status === 'failed';
+    }
+
+    public function getProcessingStatusLabel(): string
+    {
+        return match($this->processing_status) {
+            'pending' => 'Pending',
+            'processing' => 'Processing',
+            'completed' => 'Completed',
+            'failed' => 'Failed',
+            default => 'Unknown',
+        };
+    }
+
     public function getFormattedSize(): string
     {
         $bytes = $this->size;
@@ -139,6 +168,7 @@ class MediaFile extends Model
             'folder' => $folder,
             'tags' => $tags,
             'status' => 'processing',
+            'processing_status' => 'pending',
         ]);
     }
 
