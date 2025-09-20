@@ -5,7 +5,9 @@
       "WebFetch(domain:docs.uazapi.com)",
       "Bash(docker-compose:*)",
       "Bash(docker exec:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
