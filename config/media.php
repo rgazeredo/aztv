@@ -37,4 +37,18 @@ return [
             'time' => env('MEDIA_THUMBNAIL_TIME', 1), // seconds
         ],
     ],
+
+    'validation' => [
+        'enabled' => env('MEDIA_VALIDATION_ENABLED', true),
+        'strict_mode' => env('MEDIA_VALIDATION_STRICT', false),
+        'log_all_attempts' => env('MEDIA_VALIDATION_LOG_ALL', true),
+    ],
+
+    'antivirus' => [
+        'enabled' => env('ANTIVIRUS_ENABLED', false),
+        'scanner' => env('ANTIVIRUS_SCANNER', 'clamav'), // clamav, virustotal
+        'scan_on_upload' => env('ANTIVIRUS_SCAN_ON_UPLOAD', true),
+        'quarantine_infected' => env('ANTIVIRUS_QUARANTINE', true),
+        'queue' => env('ANTIVIRUS_QUEUE', 'virus-scanning'),
+    ],
 ];

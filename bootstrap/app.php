@@ -33,6 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => AdminMiddleware::class,
             'tenant' => TenantMiddleware::class,
             'storage.quota' => \App\Http\Middleware\CheckStorageQuota::class,
+            'upload.validation' => \App\Http\Middleware\UploadValidationMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
