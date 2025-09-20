@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 use Laravel\Cashier\Billable;
 
@@ -21,6 +22,7 @@ class Tenant extends Model
         'address',
         'settings',
         'is_active',
+        'plan_id',
         'stripe_id',
         'pm_type',
         'pm_last_four',
@@ -154,5 +156,48 @@ class Tenant extends Model
     public function scopeInactive($query)
     {
         return $query->where('is_active', false);
+    }
+
+    public function plan(): BelongsTo
+    {
+        return $this->belongsTo(Plan::class);
+    }
+
+    public function getActivePlan(): ?Plan
+    {
+        return $this->plan ?? Plan::where('name', 'Basic')->first();
+    }
+
+    public function getPlayerLimit(): int
+    {
+        $plan = $this->getActivePlan();
+        return $plan ? $plan->player_limit : 1;
+    }
+
+    public function getStorageLimitGb(): int
+    {
+        $plan = $this->getActivePlan();
+        return $plan ? $plan->storage_limit_gb : 1;
+    }
+
+    public function getCurrentStorageUsage(): float
+    {
+        $totalBytes = $this->mediaFiles()->sum('size');
+        return $totalBytes / (1024 * 1024 * 1024);
+    }
+
+    public function getCurrentPlayerCount(): int
+    {
+        return $this->players()->count();
+    }
+
+    public function isAtPlayerLimit(): bool
+    {
+        return $this->getCurrentPlayerCount() >= $this->getPlayerLimit();
+    }
+
+    public function isAtStorageLimit(): bool
+    {
+        return $this->getCurrentStorageUsage() >= $this->getStorageLimitGb();
     }
 }
