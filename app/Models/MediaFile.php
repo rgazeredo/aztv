@@ -1,0 +1,222 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
+
+class MediaFile extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'tenant_id',
+        'filename',
+        'original_name',
+        'mime_type',
+        'size',
+        'path',
+        'thumbnail_path',
+        'duration',
+        'display_time',
+        'folder',
+        'tags',
+        'status',
+    ];
+
+    protected $casts = [
+        'tags' => 'array',
+        'size' => 'integer',
+        'duration' => 'integer',
+        'display_time' => 'integer',
+    ];
+
+    // Relationships
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
+    }
+
+    public function playlists(): BelongsToMany
+    {
+        return $this->belongsToMany(Playlist::class, 'playlist_items')
+            ->withPivot(['order', 'display_time_override'])
+            ->withTimestamps()
+            ->orderBy('pivot_order');
+    }
+
+    // Methods
+    public function getUrl(): string
+    {
+        return Storage::url($this->path);
+    }
+
+    public function getThumbnailUrl(): ?string
+    {
+        if (!$this->thumbnail_path) {
+            return null;
+        }
+        return Storage::url($this->thumbnail_path);
+    }
+
+    public function isVideo(): bool
+    {
+        return str_starts_with($this->mime_type, 'video/');
+    }
+
+    public function isImage(): bool
+    {
+        return str_starts_with($this->mime_type, 'image/');
+    }
+
+    public function isReady(): bool
+    {
+        return $this->status === 'ready';
+    }
+
+    public function isProcessing(): bool
+    {
+        return $this->status === 'processing';
+    }
+
+    public function hasError(): bool
+    {
+        return $this->status === 'error';
+    }
+
+    public function getFormattedSize(): string
+    {
+        $bytes = $this->size;
+        $units = ['B', 'KB', 'MB', 'GB'];
+
+        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
+            $bytes /= 1024;
+        }
+
+        return round($bytes, 2) . ' ' . $units[$i];
+    }
+
+    public function getFormattedDuration(): ?string
+    {
+        if (!$this->duration) {
+            return null;
+        }
+
+        $minutes = floor($this->duration / 60);
+        $seconds = $this->duration % 60;
+
+        return sprintf('%02d:%02d', $minutes, $seconds);
+    }
+
+    public function markAsReady(): void
+    {
+        $this->update(['status' => 'ready']);
+    }
+
+    public function markAsError(): void
+    {
+        $this->update(['status' => 'error']);
+    }
+
+    // Static methods for file upload
+    public static function createFromUpload(UploadedFile $file, int $tenantId, ?string $folder = null, array $tags = []): self
+    {
+        $filename = Str::uuid() . '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs("media/{$tenantId}", $filename, 'public');
+
+        return static::create([
+            'tenant_id' => $tenantId,
+            'filename' => $filename,
+            'original_name' => $file->getClientOriginalName(),
+            'mime_type' => $file->getMimeType(),
+            'size' => $file->getSize(),
+            'path' => $path,
+            'folder' => $folder,
+            'tags' => $tags,
+            'status' => 'processing',
+        ]);
+    }
+
+    // Validation methods
+    public static function isValidMimeType(string $mimeType): bool
+    {
+        $allowedTypes = [
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/webp',
+            'video/mp4',
+            'video/webm',
+            'video/avi',
+            'video/mov',
+            'text/html',
+            'application/pdf',
+        ];
+
+        return in_array($mimeType, $allowedTypes);
+    }
+
+    // Scopes
+    public function scopeReady($query)
+    {
+        return $query->where('status', 'ready');
+    }
+
+    public function scopeProcessing($query)
+    {
+        return $query->where('status', 'processing');
+    }
+
+    public function scopeError($query)
+    {
+        return $query->where('status', 'error');
+    }
+
+    public function scopeForTenant($query, $tenantId)
+    {
+        return $query->where('tenant_id', $tenantId);
+    }
+
+    public function scopeInFolder($query, $folder)
+    {
+        return $query->where('folder', $folder);
+    }
+
+    public function scopeOfType($query, $type)
+    {
+        return match($type) {
+            'image' => $query->where('mime_type', 'like', 'image/%'),
+            'video' => $query->where('mime_type', 'like', 'video/%'),
+            'document' => $query->whereIn('mime_type', ['text/html', 'application/pdf']),
+            default => $query,
+        };
+    }
+
+    public function scopeWithTags($query, array $tags)
+    {
+        foreach ($tags as $tag) {
+            $query->whereJsonContains('tags', $tag);
+        }
+        return $query;
+    }
+
+    // Delete file when model is deleted
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::deleting(function ($mediaFile) {
+            if ($mediaFile->path) {
+                Storage::disk('public')->delete($mediaFile->path);
+            }
+            if ($mediaFile->thumbnail_path) {
+                Storage::disk('public')->delete($mediaFile->thumbnail_path);
+            }
+        });
+    }
+}
