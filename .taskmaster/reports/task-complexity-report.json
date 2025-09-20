@@ -1,0 +1,493 @@
+{
+	"meta": {
+		"generatedAt": "2025-09-20T19:30:15.109Z",
+		"tasksAnalyzed": 60,
+		"totalTasks": 60,
+		"analysisCount": 60,
+		"thresholdScore": 5,
+		"projectName": "Taskmaster",
+		"usedResearch": false
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 1,
+			"taskTitle": "Criar migration para tabela 'players' com campos essenciais",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Divida esta tarefa em: 1) Criar arquivo de migration com estrutura da tabela; 2) Adicionar índices e constraints de performance; 3) Implementar e testar rollback da migration",
+			"reasoning": "Migration simples mas com vários campos específicos, foreign keys e índices. Requer conhecimento de Laravel migrations e estrutura multi-tenant existente."
+		},
+		{
+			"taskId": 2,
+			"taskTitle": "Criar migration para tabela 'media_files' com campos essenciais",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Divida esta tarefa em: 1) Criar estrutura base da tabela com campos obrigatórios; 2) Adicionar campos de metadata e validações; 3) Implementar índices compostos e foreign keys",
+			"reasoning": "Similar à task 1, mas com campos específicos para mídia como thumbnails e duração. Complexidade moderada devido aos diferentes tipos de mídia."
+		},
+		{
+			"taskId": 3,
+			"taskTitle": "Criar migration para tabela 'playlists' com campos essenciais",
+			"complexityScore": 3,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Divida esta tarefa em: 1) Criar estrutura da tabela com relacionamentos básicos; 2) Implementar constraint única para playlist padrão por tenant",
+			"reasoning": "Migration mais simples com menos campos complexos. A constraint única para playlist padrão adiciona alguma complexidade."
+		},
+		{
+			"taskId": 4,
+			"taskTitle": "Criar migration para tabela 'playlist_items' com campos essenciais",
+			"complexityScore": 5,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Divida esta tarefa em: 1) Criar estrutura da tabela pivot; 2) Implementar foreign keys com cascade delete; 3) Adicionar índices únicos compostos; 4) Testar constraints de unicidade",
+			"reasoning": "Tabela pivot com múltiplas constraints únicas e relacionamentos cascade. Requer cuidado especial com índices compostos para evitar duplicatas."
+		},
+		{
+			"taskId": 5,
+			"taskTitle": "Criar migration para tabela 'player_playlists' (pivot)",
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Divida esta tarefa em: 1) Criar estrutura da tabela pivot com campos básicos; 2) Implementar campos de agendamento (datas, schedule_config); 3) Adicionar índices de performance; 4) Testar constraints e relacionamentos",
+			"reasoning": "Tabela pivot complexa com campos de agendamento, JSON para configurações e múltiplos índices. Envolve lógica de negócio mais avançada."
+		},
+		{
+			"taskId": 6,
+			"taskTitle": "Criar migration para tabela 'apk_versions' com campos essenciais",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Divida esta tarefa em: 1) Criar estrutura com campos básicos de versão; 2) Implementar constraint única composta (tenant_id, version); 3) Adicionar campos de tracking e metadata",
+			"reasoning": "Migration com constraint única composta e campos nullable para versões globais. Complexidade moderada devido à lógica de versionamento."
+		},
+		{
+			"taskId": 7,
+			"taskTitle": "Criar migration para tabela 'content_modules' com campos essenciais",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Divida esta tarefa em: 1) Criar estrutura básica com enum de tipos; 2) Implementar constraint única (tenant_id, type); 3) Adicionar campo JSON de configurações",
+			"reasoning": "Migration com enum específico e constraint única composta. Campo JSON requer cuidado especial para configurações flexíveis."
+		},
+		{
+			"taskId": 8,
+			"taskTitle": "Criar migration para tabela 'player_logs' com campos essenciais",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Divida esta tarefa em: 1) Criar estrutura básica com enum de tipos de log; 2) Implementar foreign key com cascade delete; 3) Adicionar índices compostos para performance",
+			"reasoning": "Migration com enum para tipos de log e campo JSON para dados estruturados. Índices compostos importantes para consultas de log eficientes."
+		},
+		{
+			"taskId": 57,
+			"taskTitle": "Implementar validações robustas para upload de mídia com verificação de tipos, tamanho e vírus",
+			"complexityScore": 8,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Divida esta tarefa em: 1) Criar MediaValidationService com validações básicas; 2) Implementar verificação de MIME types vs extensões; 3) Criar middleware de validação; 4) Implementar logging de tentativas suspeitas; 5) Preparar interface para antivírus; 6) Criar testes de segurança",
+			"reasoning": "Tarefa complexa de segurança envolvendo validações múltiplas, detecção de malware, limites por plano e preparação para integração antivírus. Requer conhecimento de segurança."
+		},
+		{
+			"taskId": 59,
+			"taskTitle": "Implementar cache Redis para configurações de players, playlists ativas e dados de sincronização frequente",
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Divida esta tarefa em: 1) Configurar Redis e variáveis de ambiente; 2) Criar PlayerCacheService com métodos básicos; 3) Implementar SyncCacheService para sincronização; 4) Integrar cache com controllers existentes; 5) Implementar sistema de tags e invalidação automática",
+			"reasoning": "Implementação de cache distribuído com TTL, invalidação inteligente e integração com sistema existente. Requer conhecimento de Redis e padrões de cache."
+		},
+		{
+			"taskId": 9,
+			"taskTitle": "Criar model Player com relacionamentos e métodos essenciais",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar model player com relacionamentos e métodos essenciais.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 10,
+			"taskTitle": "Criar model MediaFile com relacionamentos e métodos essenciais",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar model mediafile com relacionamentos e métodos essenciais.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 11,
+			"taskTitle": "Criar model Playlist com relacionamentos e métodos de reordenação",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar model playlist com relacionamentos e métodos de reordenação.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 12,
+			"taskTitle": "Criar model PlaylistItem com relacionamentos e métodos de ordenação",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar model playlistitem com relacionamentos e métodos de ordenação.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 13,
+			"taskTitle": "Criar model ApkVersion com métodos para download tracking e validação de versão",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar model apkversion com métodos para download tracking e validação de versão.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 14,
+			"taskTitle": "Criar model ContentModule com relacionamentos e métodos de configuração",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar model contentmodule com relacionamentos e métodos de configuração.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 15,
+			"taskTitle": "Implementar AdminController com dashboard global e estatísticas",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on implementar admincontroller com dashboard global e estatísticas.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 16,
+			"taskTitle": "Criar controller TenantManagementController com CRUD completo para gerenciar clientes",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar controller tenantmanagementcontroller com crud completo para gerenciar clientes.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 17,
+			"taskTitle": "Criar controller ApkManagementController para upload de APKs, geração de links curtos, QR codes e tracking de downloads",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar controller apkmanagementcontroller para upload de apks, geração de links curtos, qr codes e tracking de downloads.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 18,
+			"taskTitle": "Criar páginas React para dashboard administrativo com estatísticas, tabela de tenants e gráficos",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar páginas react para dashboard administrativo com estatísticas, tabela de tenants e gráficos.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 19,
+			"taskTitle": "Criar páginas React para gerenciamento de tenants com formulários de criação/edição e tabela com ações",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar páginas react para gerenciamento de tenants com formulários de criação/edição e tabela com ações.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 20,
+			"taskTitle": "Criar páginas React para gerenciamento de APKs com upload, lista de versões, geração de QR codes e estatísticas de download",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar páginas react para gerenciamento de apks com upload, lista de versões, geração de qr codes e estatísticas de download.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 21,
+			"taskTitle": "Criar controller PlayerController com métodos de gerenciamento para players",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar controller playercontroller com métodos de gerenciamento para players.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 22,
+			"taskTitle": "Criar controller MediaController para gerenciamento completo de mídia no painel do cliente",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar controller mediacontroller para gerenciamento completo de mídia no painel do cliente.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 23,
+			"taskTitle": "Criar controller PlaylistController com métodos completos de gerenciamento para playlists",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar controller playlistcontroller com métodos completos de gerenciamento para playlists.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 24,
+			"taskTitle": "Criar controller DashboardController para dashboard do cliente com métricas",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar controller dashboardcontroller para dashboard do cliente com métricas.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 25,
+			"taskTitle": "Criar páginas React para dashboard do cliente com cards de resumo, gráficos de players status e avisos importantes",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar páginas react para dashboard do cliente com cards de resumo, gráficos de players status e avisos importantes.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 26,
+			"taskTitle": "Criar páginas React para gerenciamento de players com tabela, formulários e ativação",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar páginas react para gerenciamento de players com tabela, formulários e ativação.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 27,
+			"taskTitle": "Criar páginas React para upload e gerenciamento de mídias com drag-drop, preview, organização por pastas/tags e validação de tipos",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar páginas react para upload e gerenciamento de mídias com drag-drop, preview, organização por pastas/tags e validação de tipos.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 28,
+			"taskTitle": "Criar páginas React para criação e edição de playlists com drag-drop para reordenar itens e configuração de tempo de exibição",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar páginas react para criação e edição de playlists com drag-drop para reordenar itens e configuração de tempo de exibição.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 29,
+			"taskTitle": "Criar páginas React para atribuição de playlists a players com configuração de agendamento",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar páginas react para atribuição de playlists a players com configuração de agendamento.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 30,
+			"taskTitle": "Implementar sistema de upload de arquivos para S3/MinIO com validação e organização",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on implementar sistema de upload de arquivos para s3/minio com validação e organização.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 31,
+			"taskTitle": "Implementar processamento de vídeos com FFmpeg em background jobs para compressão automática e geração de thumbnails",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on implementar processamento de vídeos com ffmpeg em background jobs para compressão automática e geração de thumbnails.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 32,
+			"taskTitle": "Implementar geração automática de thumbnails para imagens e vídeos usando FFmpeg ou ImageMagick",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on implementar geração automática de thumbnails para imagens e vídeos usando ffmpeg ou imagemagick.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 33,
+			"taskTitle": "Criar PlayerApiController com endpoints para comunicação com app Android",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar playerapicontroller com endpoints para comunicação com app android.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 34,
+			"taskTitle": "Implementar endpoint /api/player/activate para ativação via token com retorno de configurações iniciais e playlist padrão",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on implementar endpoint /api/player/activate para ativação via token com retorno de configurações iniciais e playlist padrão.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 35,
+			"taskTitle": "Implementar endpoint /api/player/sync para sincronização de playlists, mídias e configurações",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on implementar endpoint /api/player/sync para sincronização de playlists, mídias e configurações.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 36,
+			"taskTitle": "Implementar endpoint /api/player/heartbeat para atualização de status online e monitoramento de players",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on implementar endpoint /api/player/heartbeat para atualização de status online e monitoramento de players.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 37,
+			"taskTitle": "Criar middleware TenantStorageLimit para verificar limites de armazenamento antes de uploads",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar middleware tenantstoragelimit para verificar limites de armazenamento antes de uploads.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 38,
+			"taskTitle": "Criar middleware PlayerLimit para verificar limites de players por tenant",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar middleware playerlimit para verificar limites de players por tenant.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 39,
+			"taskTitle": "Criar job ProcessVideoFile para compressão de vídeos com FFmpeg em background",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar job processvideofile para compressão de vídeos com ffmpeg em background.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 40,
+			"taskTitle": "Criar job GenerateThumbnail para criação de thumbnails de vídeos e imagens em background",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar job generatethumbnail para criação de thumbnails de vídeos e imagens em background.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 41,
+			"taskTitle": "Criar job CheckPlayerStatus para verificar players offline e enviar alertas por email",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar job checkplayerstatus para verificar players offline e enviar alertas por email.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 42,
+			"taskTitle": "Criar controller PlanController com métodos para definir limites de players e storage por tenant baseado no plano ativo",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar controller plancontroller com métodos para definir limites de players e storage por tenant baseado no plano ativo.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 43,
+			"taskTitle": "Implementar lógica de verificação de limites nos controllers de Player e Media",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on implementar lógica de verificação de limites nos controllers de player e media.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 44,
+			"taskTitle": "Criar controller ContentModuleController para ativar/desativar módulos automáticos",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar controller contentmodulecontroller para ativar/desativar módulos automáticos.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 45,
+			"taskTitle": "Implementar integração com API de clima para exibição automática de previsão do tempo configurável por player",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on implementar integração com api de clima para exibição automática de previsão do tempo configurável por player.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 46,
+			"taskTitle": "Implementar sistema de frases motivacionais com banco de dados e rotação automática",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on implementar sistema de frases motivacionais com banco de dados e rotação automática.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 47,
+			"taskTitle": "Implementar integração com API de cotações de moedas para conteúdos automáticos",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on implementar integração com api de cotações de moedas para conteúdos automáticos.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 48,
+			"taskTitle": "Criar sistema de geração de tokens únicos para ativação de players com QR code e link curto",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar sistema de geração de tokens únicos para ativação de players com qr code e link curto.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 49,
+			"taskTitle": "Implementar geração de QR codes para ativação de players usando biblioteca PHP com customização de logo e cores",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on implementar geração de qr codes para ativação de players usando biblioteca php com customização de logo e cores.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 50,
+			"taskTitle": "Implementar sistema de agendamento de playlists com suporte a intervalos de datas, horários específicos e dias da semana",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on implementar sistema de agendamento de playlists com suporte a intervalos de datas, horários específicos e dias da semana.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 51,
+			"taskTitle": "Criar job RecurringPlaylistScheduler para processar agendamentos recorrentes e ativar/desativar playlists automaticamente",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar job recurringplaylistscheduler para processar agendamentos recorrentes e ativar/desativar playlists automaticamente.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 52,
+			"taskTitle": "Implementar sistema de logs para ações administrativas e de usuários",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on implementar sistema de logs para ações administrativas e de usuários.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 53,
+			"taskTitle": "Criar sistema de logs de player para rastrear reprodução de mídias, erros de conectividade e performance",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar sistema de logs de player para rastrear reprodução de mídias, erros de conectividade e performance.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 54,
+			"taskTitle": "Implementar sistema de alertas por email para notificações de player offline, erro de reprodução e limite de storage",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on implementar sistema de alertas por email para notificações de player offline, erro de reprodução e limite de storage.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 55,
+			"taskTitle": "Criar sistema de configurações globais por tenant",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on criar sistema de configurações globais por tenant.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 56,
+			"taskTitle": "Implementar configurações individuais por player: volume, tempo entre mídias, looping, senha de acesso, tema visual personalizado",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on implementar configurações individuais por player: volume, tempo entre mídias, looping, senha de acesso, tema visual personalizado.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 58,
+			"taskTitle": "Implementar validações para agendamento de playlists com verificação de conflitos de horário e prioridades",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on implementar validações para agendamento de playlists com verificação de conflitos de horário e prioridades.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 60,
+			"taskTitle": "Otimizar queries de sincronização de players com eager loading e índices apropriados",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on otimizar queries de sincronização de players com eager loading e índices apropriados.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		}
+	]
+}
