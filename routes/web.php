@@ -137,6 +137,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('content-modules/{contentModule}/preview', [ContentModuleController::class, 'preview'])->name('content-modules.preview');
         Route::post('content-modules/bulk-toggle', [ContentModuleController::class, 'bulkToggle'])->name('content-modules.bulk-toggle');
         Route::get('content-modules-content', [ContentModuleController::class, 'getContent'])->name('content-modules.get-content');
+
+        // File Upload
+        Route::middleware('storage.quota')->group(function () {
+            Route::post('upload/multiple', [\App\Http\Controllers\FileUploadController::class, 'upload'])->name('upload.multiple');
+            Route::post('upload/single', [\App\Http\Controllers\FileUploadController::class, 'uploadSingle'])->name('upload.single');
+        });
+
+        Route::get('upload/info', [\App\Http\Controllers\FileUploadController::class, 'getUploadInfo'])->name('upload.info');
+        Route::post('upload/validate', [\App\Http\Controllers\FileUploadController::class, 'validateUpload'])->name('upload.validate');
     });
 
     Route::patch('settings/theme', function () {

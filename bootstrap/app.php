@@ -32,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'player.auth' => PlayerAuth::class,
             'admin' => AdminMiddleware::class,
             'tenant' => TenantMiddleware::class,
+            'storage.quota' => \App\Http\Middleware\CheckStorageQuota::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

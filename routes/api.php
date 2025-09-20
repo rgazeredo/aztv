@@ -146,6 +146,15 @@ Route::middleware(['auth:sanctum', 'tenant'])->prefix('tenant')->name('api.tenan
         return \App\Models\ContentModule::forTenant($tenantId)->get();
     })->name('content-modules');
 
+    // File Upload API
+    Route::middleware('storage.quota')->group(function () {
+        Route::post('/upload', [\App\Http\Controllers\FileUploadController::class, 'uploadSingle'])->name('upload');
+        Route::post('/upload/multiple', [\App\Http\Controllers\FileUploadController::class, 'upload'])->name('upload.multiple');
+    });
+
+    Route::get('/upload/info', [\App\Http\Controllers\FileUploadController::class, 'getUploadInfo'])->name('upload.info');
+    Route::post('/upload/validate', [\App\Http\Controllers\FileUploadController::class, 'validateUpload'])->name('upload.validate');
+
     // Dashboard stats
     Route::get('/stats', function () {
         $tenantId = auth()->user()->tenant_id;

@@ -112,4 +112,47 @@ class Tenant extends Model
     {
         return $this->users()->count() >= $this->getUserLimit();
     }
+
+    public function getSubscriptionPlan(): string
+    {
+        if ($this->hasActiveSubscription()) {
+            $subscription = $this->subscriptions()->active()->first();
+            if ($subscription && $subscription->stripe_price) {
+                return match($subscription->stripe_price) {
+                    'price_basic' => 'basic',
+                    'price_professional' => 'professional',
+                    'price_enterprise' => 'enterprise',
+                    default => 'basic',
+                };
+            }
+        }
+
+        $settings = $this->settings ?? [];
+        return $settings['plan'] ?? 'basic';
+    }
+
+    public function players(): HasMany
+    {
+        return $this->hasMany(Player::class);
+    }
+
+    public function mediaFiles(): HasMany
+    {
+        return $this->hasMany(MediaFile::class);
+    }
+
+    public function playlists(): HasMany
+    {
+        return $this->hasMany(Playlist::class);
+    }
+
+    public function contentModules(): HasMany
+    {
+        return $this->hasMany(ContentModule::class);
+    }
+
+    public function scopeInactive($query)
+    {
+        return $query->where('is_active', false);
+    }
 }

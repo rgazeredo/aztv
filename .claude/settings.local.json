@@ -7,7 +7,9 @@
       "Bash(docker exec:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(task-master set-status:*)",
+      "Bash(task-master show:*)"
     ],
     "deny": [],
     "ask": []
