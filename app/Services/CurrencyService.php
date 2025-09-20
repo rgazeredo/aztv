@@ -2,244 +2,321 @@
 
 namespace App\Services;
 
+use App\Models\CurrencyRate;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
+use Exception;
 
 class CurrencyService
 {
-    private string $baseUrl = 'https://api.exchangerate-api.com/v4/latest';
-    private string $fallbackUrl = 'https://api.fixer.io/latest';
+    private const CACHE_TTL = 300; // 5 minutes
+    private const REQUEST_TIMEOUT = 10; // seconds
+    private const MAX_RETRIES = 3;
 
-    public function getRates(array $currencies = ['USD', 'EUR', 'BTC']): array
+    private array $sources = [
+        'exchangerate-api' => 'https://api.exchangerate-api.com/v4/latest/BRL',
+        'fixer' => 'https://api.fixer.io/latest',
+        'coingecko' => 'https://api.coingecko.com/api/v3/simple/price',
+    ];
+
+    public function getCurrencyRates(array $currencies = ['USD', 'EUR', 'BTC']): array
     {
         $cacheKey = 'currency_rates_' . implode('_', $currencies);
 
-        return Cache::remember($cacheKey, 900, function () use ($currencies) {
-            try {
-                // Try primary API
-                $response = Http::timeout(10)->get("{$this->baseUrl}/BRL");
-
-                if ($response->successful()) {
-                    $data = $response->json();
-                    return $this->formatRates($data['rates'], $currencies);
-                }
-
-                // Fallback to secondary API
-                return $this->getFallbackRates($currencies);
-
-            } catch (\Exception $e) {
-                return $this->getFallbackRates($currencies);
-            }
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($currencies) {
+            return $this->fetchCurrencyRates($currencies);
         });
     }
 
-    public function getSpecificRate(string $from, string $to): ?float
-    {
-        $cacheKey = "currency_rate_{$from}_{$to}";
-
-        return Cache::remember($cacheKey, 900, function () use ($from, $to) {
-            try {
-                $response = Http::timeout(10)->get("{$this->baseUrl}/{$from}");
-
-                if ($response->successful()) {
-                    $data = $response->json();
-                    return $data['rates'][$to] ?? null;
-                }
-
-                return null;
-            } catch (\Exception $e) {
-                return null;
-            }
-        });
-    }
-
-    public function convertAmount(float $amount, string $from, string $to): ?float
-    {
-        $rate = $this->getSpecificRate($from, $to);
-
-        if ($rate === null) {
-            return null;
-        }
-
-        return round($amount * $rate, 2);
-    }
-
-    public function getCryptoRates(array $cryptos = ['BTC', 'ETH']): array
-    {
-        $cacheKey = 'crypto_rates_' . implode('_', $cryptos);
-
-        return Cache::remember($cacheKey, 300, function () use ($cryptos) {
-            try {
-                $rates = [];
-
-                foreach ($cryptos as $crypto) {
-                    $response = Http::timeout(10)->get('https://api.coinbase.com/v2/exchange-rates', [
-                        'currency' => $crypto
-                    ]);
-
-                    if ($response->successful()) {
-                        $data = $response->json();
-                        $rates[$crypto] = [
-                            'symbol' => $crypto,
-                            'name' => $this->getCryptoName($crypto),
-                            'price_brl' => floatval($data['data']['rates']['BRL']),
-                            'price_usd' => floatval($data['data']['rates']['USD']),
-                            'formatted_brl' => 'R$ ' . number_format(floatval($data['data']['rates']['BRL']), 2, ',', '.'),
-                            'formatted_usd' => '$ ' . number_format(floatval($data['data']['rates']['USD']), 2, '.', ','),
-                        ];
-                    } else {
-                        $rates[$crypto] = $this->getFallbackCrypto($crypto);
-                    }
-                }
-
-                return $rates;
-            } catch (\Exception $e) {
-                return $this->getFallbackCryptoRates($cryptos);
-            }
-        });
-    }
-
-    public function testConnection(): bool
-    {
-        try {
-            $response = Http::timeout(5)->get("{$this->baseUrl}/BRL");
-            return $response->successful();
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
-
-    private function formatRates(array $rates, array $currencies): array
-    {
-        $formatted = [];
-
-        foreach ($currencies as $currency) {
-            if (isset($rates[$currency])) {
-                $rate = 1 / $rates[$currency]; // Convert from BRL base to currency
-                $formatted[$currency] = [
-                    'symbol' => $currency,
-                    'name' => $this->getCurrencyName($currency),
-                    'rate' => $rate,
-                    'formatted' => $this->formatCurrency($rate, $currency),
-                    'trend' => $this->getTrend($currency),
-                ];
-            }
-        }
-
-        return $formatted;
-    }
-
-    private function getFallbackRates(array $currencies): array
-    {
-        $fallbackRates = [
-            'USD' => 5.20,
-            'EUR' => 5.60,
-            'GBP' => 6.50,
-            'JPY' => 0.035,
-            'CAD' => 3.80,
-            'AUD' => 3.40,
-            'CHF' => 5.80,
-        ];
-
-        $formatted = [];
-
-        foreach ($currencies as $currency) {
-            if (isset($fallbackRates[$currency])) {
-                $rate = $fallbackRates[$currency];
-                $formatted[$currency] = [
-                    'symbol' => $currency,
-                    'name' => $this->getCurrencyName($currency),
-                    'rate' => $rate,
-                    'formatted' => $this->formatCurrency($rate, $currency),
-                    'trend' => 'stable',
-                ];
-            }
-        }
-
-        return $formatted;
-    }
-
-    private function getFallbackCrypto(string $crypto): array
-    {
-        $fallbackPrices = [
-            'BTC' => ['brl' => 300000, 'usd' => 58000],
-            'ETH' => ['brl' => 15000, 'usd' => 2900],
-            'ADA' => ['brl' => 2.50, 'usd' => 0.48],
-            'DOT' => ['brl' => 35, 'usd' => 6.80],
-        ];
-
-        $prices = $fallbackPrices[$crypto] ?? ['brl' => 100, 'usd' => 20];
-
-        return [
-            'symbol' => $crypto,
-            'name' => $this->getCryptoName($crypto),
-            'price_brl' => $prices['brl'],
-            'price_usd' => $prices['usd'],
-            'formatted_brl' => 'R$ ' . number_format($prices['brl'], 2, ',', '.'),
-            'formatted_usd' => '$ ' . number_format($prices['usd'], 2, '.', ','),
-        ];
-    }
-
-    private function getFallbackCryptoRates(array $cryptos): array
+    private function fetchCurrencyRates(array $currencies): array
     {
         $rates = [];
-        foreach ($cryptos as $crypto) {
-            $rates[$crypto] = $this->getFallbackCrypto($crypto);
+        $cryptoCurrencies = ['BTC', 'ETH'];
+        $fiatCurrencies = array_diff($currencies, $cryptoCurrencies);
+
+        // Fetch fiat currencies
+        if (!empty($fiatCurrencies)) {
+            $fiatRates = $this->fetchFiatRates($fiatCurrencies);
+            $rates = array_merge($rates, $fiatRates);
         }
+
+        // Fetch crypto currencies
+        if (!empty(array_intersect($currencies, $cryptoCurrencies))) {
+            $cryptoRates = $this->fetchCryptoRates(array_intersect($currencies, $cryptoCurrencies));
+            $rates = array_merge($rates, $cryptoRates);
+        }
+
         return $rates;
     }
 
-    private function formatCurrency(float $rate, string $currency): string
+    private function fetchFiatRates(array $currencies): array
     {
-        $symbols = [
-            'USD' => '$',
-            'EUR' => '€',
-            'GBP' => '£',
-            'JPY' => '¥',
-            'CAD' => 'C$',
-            'AUD' => 'A$',
-            'CHF' => 'CHF',
-        ];
+        $attempts = 0;
 
-        $symbol = $symbols[$currency] ?? $currency;
-        return $symbol . ' ' . number_format($rate, 2, ',', '.');
+        while ($attempts < self::MAX_RETRIES) {
+            try {
+                // Try ExchangeRate-API first (free, no API key required)
+                $rates = $this->fetchFromExchangeRateApi($currencies);
+                if (!empty($rates)) {
+                    return $rates;
+                }
+
+                // Fallback to Fixer.io if API key is available
+                if (config('services.fixer.api_key')) {
+                    $rates = $this->fetchFromFixer($currencies);
+                    if (!empty($rates)) {
+                        return $rates;
+                    }
+                }
+
+                $attempts++;
+                sleep(1); // Wait before retry
+
+            } catch (Exception $e) {
+                Log::warning('Currency API attempt failed', [
+                    'attempt' => $attempts + 1,
+                    'error' => $e->getMessage(),
+                ]);
+                $attempts++;
+            }
+        }
+
+        // Return last known rates if all APIs fail
+        return $this->getLastKnownRates($currencies);
     }
 
-    private function getCurrencyName(string $currency): string
+    private function fetchCryptoRates(array $currencies): array
     {
-        $names = [
-            'USD' => 'Dólar Americano',
-            'EUR' => 'Euro',
-            'GBP' => 'Libra Esterlina',
-            'JPY' => 'Iene Japonês',
-            'CAD' => 'Dólar Canadense',
-            'AUD' => 'Dólar Australiano',
-            'CHF' => 'Franco Suíço',
-        ];
+        try {
+            $cryptoMap = [
+                'BTC' => 'bitcoin',
+                'ETH' => 'ethereum',
+            ];
 
-        return $names[$currency] ?? $currency;
+            $ids = array_map(fn($currency) => $cryptoMap[$currency] ?? strtolower($currency), $currencies);
+
+            $response = Http::timeout(self::REQUEST_TIMEOUT)
+                ->get($this->sources['coingecko'], [
+                    'ids' => implode(',', $ids),
+                    'vs_currencies' => 'brl',
+                ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $rates = [];
+
+                foreach ($currencies as $currency) {
+                    $coinId = $cryptoMap[$currency] ?? strtolower($currency);
+                    if (isset($data[$coinId]['brl'])) {
+                        $rates[$currency] = [
+                            'currency' => $currency,
+                            'rate_brl' => $data[$coinId]['brl'],
+                            'source' => 'coingecko',
+                            'fetched_at' => now(),
+                        ];
+                    }
+                }
+
+                Log::info('Crypto rates fetched successfully', [
+                    'currencies' => $currencies,
+                    'source' => 'coingecko',
+                    'count' => count($rates),
+                ]);
+
+                return $rates;
+            }
+
+        } catch (Exception $e) {
+            Log::error('Failed to fetch crypto rates', [
+                'error' => $e->getMessage(),
+                'currencies' => $currencies,
+            ]);
+        }
+
+        return $this->getLastKnownRates($currencies);
     }
 
-    private function getCryptoName(string $crypto): string
+    private function fetchFromExchangeRateApi(array $currencies): array
     {
-        $names = [
-            'BTC' => 'Bitcoin',
-            'ETH' => 'Ethereum',
-            'ADA' => 'Cardano',
-            'DOT' => 'Polkadot',
-            'BNB' => 'Binance Coin',
-            'XRP' => 'Ripple',
-            'SOL' => 'Solana',
-            'DOGE' => 'Dogecoin',
-        ];
+        $response = Http::timeout(self::REQUEST_TIMEOUT)
+            ->get($this->sources['exchangerate-api']);
 
-        return $names[$crypto] ?? $crypto;
+        if (!$response->successful()) {
+            throw new Exception('ExchangeRate-API request failed');
+        }
+
+        $data = $response->json();
+
+        if (!isset($data['rates'])) {
+            throw new Exception('Invalid response format from ExchangeRate-API');
+        }
+
+        $rates = [];
+        foreach ($currencies as $currency) {
+            if (isset($data['rates'][$currency])) {
+                // Convert from BRL base to foreign currency rate
+                $rate = 1 / $data['rates'][$currency];
+
+                $rates[$currency] = [
+                    'currency' => $currency,
+                    'rate_brl' => round($rate, 6),
+                    'source' => 'exchangerate-api',
+                    'fetched_at' => now(),
+                ];
+            }
+        }
+
+        Log::info('Fiat rates fetched from ExchangeRate-API', [
+            'currencies' => $currencies,
+            'count' => count($rates),
+        ]);
+
+        return $rates;
     }
 
-    private function getTrend(string $currency): string
+    private function fetchFromFixer(array $currencies): array
     {
-        // Simple mock trend - in production, compare with previous rates
-        $trends = ['up', 'down', 'stable'];
-        return $trends[array_rand($trends)];
+        $apiKey = config('services.fixer.api_key');
+
+        if (!$apiKey) {
+            return [];
+        }
+
+        $response = Http::timeout(self::REQUEST_TIMEOUT)
+            ->get($this->sources['fixer'], [
+                'access_key' => $apiKey,
+                'base' => 'EUR',
+                'symbols' => implode(',', array_merge($currencies, ['BRL'])),
+            ]);
+
+        if (!$response->successful()) {
+            throw new Exception('Fixer.io request failed');
+        }
+
+        $data = $response->json();
+
+        if (!isset($data['rates'])) {
+            throw new Exception('Invalid response format from Fixer.io');
+        }
+
+        $brlRate = $data['rates']['BRL'] ?? null;
+        if (!$brlRate) {
+            throw new Exception('BRL rate not found in Fixer.io response');
+        }
+
+        $rates = [];
+        foreach ($currencies as $currency) {
+            if (isset($data['rates'][$currency])) {
+                // Convert EUR-based rate to BRL
+                $rate = $brlRate / $data['rates'][$currency];
+
+                $rates[$currency] = [
+                    'currency' => $currency,
+                    'rate_brl' => round($rate, 6),
+                    'source' => 'fixer',
+                    'fetched_at' => now(),
+                ];
+            }
+        }
+
+        Log::info('Fiat rates fetched from Fixer.io', [
+            'currencies' => $currencies,
+            'count' => count($rates),
+        ]);
+
+        return $rates;
+    }
+
+    private function getLastKnownRates(array $currencies): array
+    {
+        $rates = [];
+
+        foreach ($currencies as $currency) {
+            $lastRate = CurrencyRate::byCurrency($currency)
+                ->latest()
+                ->first();
+
+            if ($lastRate) {
+                $rates[$currency] = [
+                    'currency' => $currency,
+                    'rate_brl' => $lastRate->rate_brl,
+                    'source' => $lastRate->source . '_cached',
+                    'fetched_at' => $lastRate->fetched_at,
+                ];
+            }
+        }
+
+        Log::info('Returned last known rates', [
+            'currencies' => $currencies,
+            'count' => count($rates),
+        ]);
+
+        return $rates;
+    }
+
+    public function updateStoredRates(array $currencies = ['USD', 'EUR', 'BTC']): array
+    {
+        $rates = $this->getCurrencyRates($currencies);
+        $updated = [];
+
+        foreach ($rates as $currency => $rateData) {
+            try {
+                $currencyRate = CurrencyRate::updateOrCreate(
+                    [
+                        'currency' => $rateData['currency'],
+                        'source' => $rateData['source'],
+                    ],
+                    [
+                        'rate_brl' => $rateData['rate_brl'],
+                        'fetched_at' => $rateData['fetched_at'],
+                    ]
+                );
+
+                $updated[] = $currencyRate;
+
+                Log::debug('Currency rate updated', [
+                    'currency' => $currency,
+                    'rate' => $rateData['rate_brl'],
+                    'source' => $rateData['source'],
+                ]);
+
+            } catch (Exception $e) {
+                Log::error('Failed to store currency rate', [
+                    'currency' => $currency,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Clear cache after updating
+        Cache::forget('currency_rates_' . implode('_', $currencies));
+
+        Log::info('Currency rates update completed', [
+            'total_requested' => count($currencies),
+            'successful_updates' => count($updated),
+        ]);
+
+        return $updated;
+    }
+
+    public function getStoredRates(array $currencies = null): array
+    {
+        return CurrencyRate::getLatestRates($currencies);
+    }
+
+    public function isServiceHealthy(): bool
+    {
+        try {
+            // Test with a simple USD rate fetch
+            $rates = $this->getCurrencyRates(['USD']);
+            return !empty($rates);
+        } catch (Exception $e) {
+            Log::error('Currency service health check failed', [
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
     }
 }

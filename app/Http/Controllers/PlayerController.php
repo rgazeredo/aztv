@@ -532,4 +532,37 @@ class PlayerController extends Controller
 
         return Player::where('token', $token)->first();
     }
+
+    public function getCurrencyRates(Request $request)
+    {
+        $player = $this->authenticatePlayer($request);
+
+        if (!$player) {
+            return response()->json([
+                'error' => 'Player not authenticated',
+            ], 401);
+        }
+
+        $currencyService = app(\App\Services\CurrencyService::class);
+        $currencies = $request->input('currencies', ['USD', 'EUR', 'BTC']);
+
+        if (is_string($currencies)) {
+            $currencies = explode(',', $currencies);
+        }
+
+        $rates = $currencyService->getStoredRates($currencies);
+        $healthCheck = $currencyService->isServiceHealthy();
+
+        return response()->json([
+            'success' => true,
+            'rates' => $rates,
+            'metadata' => [
+                'currencies_requested' => $currencies,
+                'currencies_found' => array_keys($rates),
+                'last_updated' => now()->toISOString(),
+                'service_healthy' => $healthCheck,
+                'cache_ttl' => 300, // 5 minutes
+            ],
+        ]);
+    }
 }

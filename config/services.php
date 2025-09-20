@@ -35,4 +35,27 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Currency Exchange APIs
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for currency exchange rate APIs.
+    |
+    */
+
+    'fixer' => [
+        'api_key' => env('FIXER_API_KEY'),
+        'base_url' => 'https://api.fixer.io/latest',
+    ],
+
+    'exchangerate_api' => [
+        'base_url' => 'https://api.exchangerate-api.com/v4/latest',
+    ],
+
+    'coingecko' => [
+        'api_key' => env('COINGECKO_API_KEY'), // Optional, for higher rate limits
+        'base_url' => 'https://api.coingecko.com/api/v3',
+    ],
+
 ];
