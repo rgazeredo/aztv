@@ -42,6 +42,8 @@ class ProcessVideoFile implements ShouldQueue
 
             $this->updateMediaFile($processedData);
 
+            $this->dispatchThumbnailGeneration();
+
             $this->updateStatus('completed');
 
             $this->notifyCompletion();
@@ -274,6 +276,22 @@ class ProcessVideoFile implements ShouldQueue
 
         } catch (Exception $e) {
             Log::warning("Failed to send failure notification", [
+                'media_file_id' => $this->mediaFile->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function dispatchThumbnailGeneration(): void
+    {
+        try {
+            GenerateThumbnail::dispatch($this->mediaFile);
+
+            Log::info("Dispatched thumbnail generation job", [
+                'media_file_id' => $this->mediaFile->id,
+            ]);
+        } catch (Exception $e) {
+            Log::warning("Failed to dispatch thumbnail generation job", [
                 'media_file_id' => $this->mediaFile->id,
                 'error' => $e->getMessage(),
             ]);
