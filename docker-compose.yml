@@ -12,6 +12,7 @@ services:
             - .:/var/www
         depends_on:
             - postgres
+            - redis
         networks:
             - aztv-net
 
@@ -42,8 +43,21 @@ services:
         networks:
             - aztv-net
 
+    redis:
+        image: redis:7-alpine
+        container_name: aztv-redis
+        restart: unless-stopped
+        ports:
+            - "6379:6379"
+        volumes:
+            - redisdata:/data
+        command: redis-server --appendonly yes
+        networks:
+            - aztv-net
+
 networks:
     aztv-net:
 
 volumes:
     pgdata:
+    redisdata:

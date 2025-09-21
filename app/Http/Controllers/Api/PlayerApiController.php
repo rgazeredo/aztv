@@ -7,12 +7,24 @@ use App\Models\Player;
 use App\Models\PlayerLog;
 use App\Models\ApkVersion;
 use App\Models\ContentModule;
+use App\Services\PlayerCacheService;
+use App\Services\SyncCacheService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Carbon\Carbon;
 
 class PlayerApiController extends Controller
 {
+    private PlayerCacheService $playerCacheService;
+    private SyncCacheService $syncCacheService;
+
+    public function __construct(PlayerCacheService $playerCacheService, SyncCacheService $syncCacheService)
+    {
+        $this->playerCacheService = $playerCacheService;
+        $this->syncCacheService = $syncCacheService;
+    }
+
     public function authenticate(Request $request)
     {
         $validated = $request->validate([
@@ -36,6 +48,12 @@ class PlayerApiController extends Controller
             'ip_address' => $request->ip(),
             'last_seen' => now(),
         ]);
+
+        // Cache player configuration after authentication
+        $this->playerCacheService->cachePlayerConfig($player);
+
+        // Cache sync timestamp
+        $this->syncCacheService->cacheSyncTimestamp($player->id, now());
 
         PlayerLog::logInfo($player->id, 'Player autenticado com sucesso', [
             'app_version' => $validated['app_version'],
@@ -105,6 +123,25 @@ class PlayerApiController extends Controller
             return $this->unauthorizedResponse();
         }
 
+        // Try to get cached playlists first
+        $cachedPlaylist = $this->playerCacheService->getCachedActivePlaylist($player->id);
+
+        if ($cachedPlaylist) {
+            PlayerLog::logInfo($player->id, 'Playlists sincronizadas (cache)', [
+                'cache_hit' => true,
+                'playlist_id' => $cachedPlaylist['id'],
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'playlists' => [$cachedPlaylist],
+                    'last_updated' => $cachedPlaylist['cached_at'],
+                    'from_cache' => true,
+                ],
+            ]);
+        }
+
         $activePlaylists = $player->getActivePlaylists();
 
         $playlistsData = $activePlaylists->map(function ($playlist) {
@@ -132,8 +169,15 @@ class PlayerApiController extends Controller
             ];
         });
 
-        PlayerLog::logInfo($player->id, 'Playlists sincronizadas', [
+        // Cache the first active playlist if exists
+        if ($activePlaylists->isNotEmpty()) {
+            $firstPlaylist = $activePlaylists->first();
+            $this->playerCacheService->cacheActivePlaylist($player->id, $firstPlaylist);
+        }
+
+        PlayerLog::logInfo($player->id, 'Playlists sincronizadas (database)', [
             'playlists_count' => $playlistsData->count(),
+            'cache_hit' => false,
         ]);
 
         return response()->json([
@@ -141,7 +185,58 @@ class PlayerApiController extends Controller
             'data' => [
                 'playlists' => $playlistsData,
                 'last_updated' => now()->toISOString(),
+                'from_cache' => false,
             ],
+        ]);
+    }
+
+    public function syncDelta(Request $request)
+    {
+        $player = $this->getAuthenticatedPlayer($request);
+
+        if (!$player) {
+            return $this->unauthorizedResponse();
+        }
+
+        $validated = $request->validate([
+            'last_sync' => 'nullable|date',
+        ]);
+
+        $lastSync = $validated['last_sync'] ? Carbon::parse($validated['last_sync']) : null;
+
+        // Try to get sync data from cache first
+        $cachedSyncData = $this->syncCacheService->getSyncDataFromCache($player->id, $lastSync);
+
+        if (!empty($cachedSyncData)) {
+            PlayerLog::logInfo($player->id, 'Sync delta (cache)', [
+                'cache_hit' => true,
+                'last_sync' => $lastSync?->toISOString(),
+                'changes_count' => count($cachedSyncData['sync_data']['changes'] ?? []),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $cachedSyncData['sync_data'],
+                'from_cache' => true,
+            ]);
+        }
+
+        // Generate fresh sync delta
+        $syncDelta = $this->syncCacheService->generateSyncDelta($player->id, $lastSync);
+
+        // Update sync timestamp
+        $this->syncCacheService->cacheSyncTimestamp($player->id, now());
+
+        PlayerLog::logInfo($player->id, 'Sync delta (generated)', [
+            'cache_hit' => false,
+            'last_sync' => $lastSync?->toISOString(),
+            'changes_count' => count($syncDelta['changes'] ?? []),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $syncDelta,
+            'from_cache' => false,
         ]);
     }
 

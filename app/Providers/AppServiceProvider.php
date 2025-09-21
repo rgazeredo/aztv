@@ -26,5 +26,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Register model observers
         \App\Models\MediaFile::observe(\App\Observers\MediaFileObserver::class);
+        \App\Models\Player::observe(\App\Observers\PlayerObserver::class);
+        \App\Models\Playlist::observe(\App\Observers\PlaylistObserver::class);
     }
 }

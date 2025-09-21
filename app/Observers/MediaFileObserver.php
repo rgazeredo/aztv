@@ -3,30 +3,30 @@
 namespace App\Observers;
 
 use App\Models\MediaFile;
-use App\Services\ThumbnailService;
-use App\Jobs\ThumbnailGenerationJob;
-use Illuminate\Support\Facades\Log;
+use App\Services\PlayerCacheService;
+use App\Services\SyncCacheService;
 
 class MediaFileObserver
 {
-    public function __construct(
-        private ThumbnailService $thumbnailService
-    ) {}
+    private PlayerCacheService $playerCacheService;
+    private SyncCacheService $syncCacheService;
+
+    public function __construct(PlayerCacheService $playerCacheService, SyncCacheService $syncCacheService)
+    {
+        $this->playerCacheService = $playerCacheService;
+        $this->syncCacheService = $syncCacheService;
+    }
 
     /**
      * Handle the MediaFile "created" event.
      */
     public function created(MediaFile $mediaFile): void
     {
-        // Dispatch thumbnail generation if auto-generation is enabled
-        if (config('thumbnails.processing.generate_on_upload', true)) {
-            ThumbnailGenerationJob::dispatch($mediaFile);
+        // Cache the new file checksum
+        $this->syncCacheService->cacheFileChecksum($mediaFile->id, $mediaFile->checksum);
 
-            Log::info("Dispatched thumbnail generation for new MediaFile", [
-                'media_file_id' => $mediaFile->id,
-                'type' => $mediaFile->type,
-            ]);
-        }
+        // Invalidate tenant cache
+        $this->playerCacheService->invalidateTenantCache($mediaFile->tenant_id);
     }
 
     /**
@@ -34,20 +34,37 @@ class MediaFileObserver
      */
     public function updated(MediaFile $mediaFile): void
     {
-        // If the file path changed, regenerate thumbnails
-        if ($mediaFile->isDirty('path') && $mediaFile->getOriginal('path') !== $mediaFile->path) {
-            // Delete old thumbnails
-            $this->thumbnailService->deleteThumbnails($mediaFile);
+        // Invalidate file cache
+        $this->syncCacheService->invalidateFileCache($mediaFile->id);
 
-            // Generate new thumbnails
-            ThumbnailGenerationJob::dispatch($mediaFile);
-
-            Log::info("Regenerating thumbnails due to path change", [
-                'media_file_id' => $mediaFile->id,
-                'old_path' => $mediaFile->getOriginal('path'),
-                'new_path' => $mediaFile->path,
-            ]);
+        // If checksum changed, update it in cache
+        if ($mediaFile->isDirty('checksum')) {
+            $this->syncCacheService->cacheFileChecksum($mediaFile->id, $mediaFile->checksum);
         }
+
+        // Invalidate cache for all playlists using this media file
+        $playlistIds = $mediaFile->playlists()->pluck('id');
+        foreach ($playlistIds as $playlistId) {
+            $this->playerCacheService->invalidatePlaylistCache($playlistId);
+
+            // Invalidate cache for all players using these playlists
+            $playerIds = \App\Models\Playlist::find($playlistId)->players()->pluck('id');
+            foreach ($playerIds as $playerId) {
+                $this->playerCacheService->invalidatePlayerCache($playerId);
+                $this->syncCacheService->invalidatePlayerSyncCache($playerId);
+            }
+        }
+
+        // If tenant changed, invalidate old tenant cache
+        if ($mediaFile->isDirty('tenant_id')) {
+            $oldTenantId = $mediaFile->getOriginal('tenant_id');
+            if ($oldTenantId) {
+                $this->playerCacheService->invalidateTenantCache($oldTenantId);
+            }
+        }
+
+        // Invalidate current tenant cache
+        $this->playerCacheService->invalidateTenantCache($mediaFile->tenant_id);
     }
 
     /**
@@ -55,14 +72,24 @@ class MediaFileObserver
      */
     public function deleted(MediaFile $mediaFile): void
     {
-        // Clean up thumbnails when media file is deleted
-        if (config('thumbnails.cleanup.auto_delete', true)) {
-            $this->thumbnailService->deleteThumbnails($mediaFile);
+        // Invalidate file cache
+        $this->syncCacheService->invalidateFileCache($mediaFile->id);
 
-            Log::info("Cleaned up thumbnails for deleted MediaFile", [
-                'media_file_id' => $mediaFile->id,
-            ]);
+        // Invalidate cache for all playlists that were using this media file
+        $playlistIds = $mediaFile->playlists()->pluck('id');
+        foreach ($playlistIds as $playlistId) {
+            $this->playerCacheService->invalidatePlaylistCache($playlistId);
+
+            // Invalidate cache for all players using these playlists
+            $playerIds = \App\Models\Playlist::find($playlistId)->players()->pluck('id');
+            foreach ($playerIds as $playerId) {
+                $this->playerCacheService->invalidatePlayerCache($playerId);
+                $this->syncCacheService->invalidatePlayerSyncCache($playerId);
+            }
         }
+
+        // Invalidate tenant cache
+        $this->playerCacheService->invalidateTenantCache($mediaFile->tenant_id);
     }
 
     /**
@@ -70,12 +97,11 @@ class MediaFileObserver
      */
     public function restored(MediaFile $mediaFile): void
     {
-        // Regenerate thumbnails when media file is restored
-        ThumbnailGenerationJob::dispatch($mediaFile);
+        // Re-cache the restored file
+        $this->syncCacheService->cacheFileChecksum($mediaFile->id, $mediaFile->checksum);
 
-        Log::info("Regenerating thumbnails for restored MediaFile", [
-            'media_file_id' => $mediaFile->id,
-        ]);
+        // Invalidate tenant cache
+        $this->playerCacheService->invalidateTenantCache($mediaFile->tenant_id);
     }
 
     /**
@@ -83,11 +109,8 @@ class MediaFileObserver
      */
     public function forceDeleted(MediaFile $mediaFile): void
     {
-        // Clean up thumbnails when media file is force deleted
-        $this->thumbnailService->deleteThumbnails($mediaFile);
-
-        Log::info("Force cleaned up thumbnails for permanently deleted MediaFile", [
-            'media_file_id' => $mediaFile->id,
-        ]);
+        // Same as deleted - remove all cache references
+        $this->syncCacheService->invalidateFileCache($mediaFile->id);
+        $this->playerCacheService->invalidateTenantCache($mediaFile->tenant_id);
     }
 }
