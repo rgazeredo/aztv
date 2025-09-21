@@ -7,6 +7,7 @@ use App\Jobs\UpdateCurrencyRates;
 use App\Jobs\ProcessScheduledPlaylists;
 use App\Jobs\CheckPlayerStatus;
 use App\Jobs\RecurringPlaylistScheduler;
+use App\Jobs\CheckAlerts;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -45,4 +46,11 @@ Schedule::job(new RecurringPlaylistScheduler())
     ->everyMinute()
     ->name('recurring-playlist-scheduler')
     ->withoutOverlapping(2) // Prevent overlapping for 2 minutes
+    ->onOneServer();
+
+// Schedule alert checking every 5 minutes
+Schedule::job(new CheckAlerts())
+    ->everyFiveMinutes()
+    ->name('check-alerts')
+    ->withoutOverlapping(30) // Prevent overlapping for 30 minutes
     ->onOneServer();

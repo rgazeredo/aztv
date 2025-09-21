@@ -10,7 +10,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class PlayerOfflineAlert extends Mailable implements ShouldQueue
+class PlaybackErrorAlert extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
@@ -30,16 +30,12 @@ class PlayerOfflineAlert extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         $tenant = $this->alertRule->tenant;
-        $playerCount = count($this->alertData['offline_players']);
+        $errorCount = $this->alertData['total_errors'];
+        $timePeriod = $this->alertData['time_period'];
 
-        if ($playerCount === 1) {
-            $playerName = $this->alertData['offline_players'][0]['name'];
-            $subject = "[{$tenant->name}] Player '{$playerName}' está offline";
-        } else {
-            $subject = "[{$tenant->name}] {$playerCount} players estão offline";
-        }
-
-        return new Envelope(subject: $subject);
+        return new Envelope(
+            subject: "[{$tenant->name}] {$errorCount} erros de reprodução detectados em {$timePeriod}"
+        );
     }
 
     /**
@@ -50,14 +46,16 @@ class PlayerOfflineAlert extends Mailable implements ShouldQueue
         $tenant = $this->alertRule->tenant;
 
         return new Content(
-            view: 'emails.player-offline-alert',
+            view: 'emails.playback-error-alert',
             with: [
                 'alertRule' => $this->alertRule,
                 'alertData' => $this->alertData,
                 'tenant' => $tenant,
-                'offlinePlayers' => $this->alertData['offline_players'],
-                'thresholdMinutes' => $this->alertData['threshold_minutes'],
-                'totalOffline' => $this->alertData['total_offline'],
+                'totalErrors' => $this->alertData['total_errors'],
+                'thresholdErrors' => $this->alertData['threshold_errors'],
+                'timePeriod' => $this->alertData['time_period'],
+                'errorsByPlayer' => $this->alertData['errors_by_player'],
+                'mostAffectedPlayer' => $this->alertData['most_affected_player'],
                 'dashboardUrl' => $this->getDashboardUrl(),
             ]
         );

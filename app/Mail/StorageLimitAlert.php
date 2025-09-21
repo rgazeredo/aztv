@@ -10,7 +10,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class PlayerOfflineAlert extends Mailable implements ShouldQueue
+class StorageLimitAlert extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
@@ -30,16 +30,11 @@ class PlayerOfflineAlert extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         $tenant = $this->alertRule->tenant;
-        $playerCount = count($this->alertData['offline_players']);
+        $usagePercentage = $this->alertData['usage_percentage'];
 
-        if ($playerCount === 1) {
-            $playerName = $this->alertData['offline_players'][0]['name'];
-            $subject = "[{$tenant->name}] Player '{$playerName}' está offline";
-        } else {
-            $subject = "[{$tenant->name}] {$playerCount} players estão offline";
-        }
-
-        return new Envelope(subject: $subject);
+        return new Envelope(
+            subject: "[{$tenant->name}] Limite de armazenamento atingiu {$usagePercentage}%"
+        );
     }
 
     /**
@@ -50,14 +45,18 @@ class PlayerOfflineAlert extends Mailable implements ShouldQueue
         $tenant = $this->alertRule->tenant;
 
         return new Content(
-            view: 'emails.player-offline-alert',
+            view: 'emails.storage-limit-alert',
             with: [
                 'alertRule' => $this->alertRule,
                 'alertData' => $this->alertData,
                 'tenant' => $tenant,
-                'offlinePlayers' => $this->alertData['offline_players'],
-                'thresholdMinutes' => $this->alertData['threshold_minutes'],
-                'totalOffline' => $this->alertData['total_offline'],
+                'currentUsageGb' => $this->alertData['current_usage_gb'],
+                'limitGb' => $this->alertData['limit_gb'],
+                'usagePercentage' => $this->alertData['usage_percentage'],
+                'thresholdPercentage' => $this->alertData['threshold_percentage'],
+                'remainingGb' => $this->alertData['remaining_gb'],
+                'largestFiles' => $this->alertData['largest_files'],
+                'planName' => $this->alertData['plan_name'],
                 'dashboardUrl' => $this->getDashboardUrl(),
             ]
         );

@@ -205,4 +205,9 @@ class Tenant extends Model
     {
         return $this->hasMany(Quote::class);
     }
+
+    public function alertRules(): HasMany
+    {
+        return $this->hasMany(AlertRule::class);
+    }
 }

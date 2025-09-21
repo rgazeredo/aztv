@@ -190,6 +190,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('player-logs', PlayerLogController::class)->only(['index', 'show']);
         Route::get('player-logs/export', [PlayerLogController::class, 'export'])->name('player-logs.export');
         Route::get('player-logs/dashboard', [PlayerLogController::class, 'dashboard'])->name('player-logs.dashboard');
+
+        // Alert Rules
+        Route::resource('alerts', \App\Http\Controllers\AlertController::class);
+        Route::post('alerts/{alertRule}/toggle', [\App\Http\Controllers\AlertController::class, 'toggle'])->name('alerts.toggle');
+        Route::post('alerts/{alertRule}/test', [\App\Http\Controllers\AlertController::class, 'test'])->name('alerts.test');
     });
 
     Route::patch('settings/theme', function () {
