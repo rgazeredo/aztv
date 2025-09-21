@@ -5,16 +5,22 @@ namespace App\Observers;
 use App\Models\MediaFile;
 use App\Services\PlayerCacheService;
 use App\Services\SyncCacheService;
+use App\Services\ActivityLogService;
 
 class MediaFileObserver
 {
     private PlayerCacheService $playerCacheService;
     private SyncCacheService $syncCacheService;
+    private ActivityLogService $activityLogService;
 
-    public function __construct(PlayerCacheService $playerCacheService, SyncCacheService $syncCacheService)
-    {
+    public function __construct(
+        PlayerCacheService $playerCacheService,
+        SyncCacheService $syncCacheService,
+        ActivityLogService $activityLogService
+    ) {
         $this->playerCacheService = $playerCacheService;
         $this->syncCacheService = $syncCacheService;
+        $this->activityLogService = $activityLogService;
     }
 
     /**
@@ -22,6 +28,9 @@ class MediaFileObserver
      */
     public function created(MediaFile $mediaFile): void
     {
+        // Log the activity
+        $this->activityLogService->logMediaUploaded($mediaFile);
+
         // Cache the new file checksum
         $this->syncCacheService->cacheFileChecksum($mediaFile->id, $mediaFile->checksum);
 
@@ -34,6 +43,10 @@ class MediaFileObserver
      */
     public function updated(MediaFile $mediaFile): void
     {
+        // Log the activity first
+        $oldValues = $mediaFile->getOriginal();
+        $this->activityLogService->logMediaUpdated($mediaFile, $oldValues);
+
         // Invalidate file cache
         $this->syncCacheService->invalidateFileCache($mediaFile->id);
 
@@ -72,6 +85,9 @@ class MediaFileObserver
      */
     public function deleted(MediaFile $mediaFile): void
     {
+        // Log the activity
+        $this->activityLogService->logMediaDeleted($mediaFile);
+
         // Invalidate file cache
         $this->syncCacheService->invalidateFileCache($mediaFile->id);
 

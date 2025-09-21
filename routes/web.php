@@ -16,6 +16,7 @@ use App\Http\Controllers\ActivationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\QRCodeController;
 use App\Http\Controllers\PlaylistScheduleController;
+use App\Http\Controllers\ActivityLogController;
 
 // API routes for pricing
 Route::get('/api/pricing/plans', [PricingController::class, 'getPlans'])->name('api.pricing.plans');
@@ -179,6 +180,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('activation', ActivationController::class)->only(['index', 'store']);
         Route::delete('activation/{token}/revoke', [ActivationController::class, 'revoke'])->name('activation.revoke');
         Route::post('activation/{token}/regenerate-qr', [ActivationController::class, 'regenerateQR'])->name('activation.regenerate-qr');
+
+        // Activity Logs
+        Route::resource('activity-logs', ActivityLogController::class)->only(['index', 'show']);
+        Route::get('api/activity-logs', [ActivityLogController::class, 'api'])->name('activity-logs.api');
     });
 
     Route::patch('settings/theme', function () {
