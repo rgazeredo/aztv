@@ -105,14 +105,14 @@ class ActivityLog extends Model
         };
     }
 
-    public function hasChanges(): bool
+    public function hasDataChanges(): bool
     {
         return !empty($this->old_values) || !empty($this->new_values);
     }
 
     public function getChangedFields(): array
     {
-        if (!$this->hasChanges()) {
+        if (!$this->hasDataChanges()) {
             return [];
         }
 
