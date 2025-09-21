@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use App\Services\QRCodeService;
+use Illuminate\Support\Facades\Cache;
 
 class Player extends Model
 {
@@ -23,7 +24,7 @@ class Player extends Model
         'group',
         'status',
         'ip_address',
-        'last_seen_at',
+        'last_seen',
         'app_version',
         'device_info',
         'activation_token',
@@ -33,7 +34,7 @@ class Player extends Model
     protected $casts = [
         'device_info' => 'array',
         'settings' => 'array',
-        'last_seen_at' => 'datetime',
+        'last_seen' => 'datetime',
     ];
 
     protected static function boot()
@@ -74,11 +75,11 @@ class Player extends Model
     // Methods
     public function isOnline(): bool
     {
-        if (!$this->last_seen_at) {
+        if (!$this->last_seen) {
             return false;
         }
 
-        return $this->last_seen_at->diffInMinutes(now()) <= 5; // Consider online if seen within 5 minutes
+        return $this->last_seen->diffInMinutes(now()) <= 5; // Consider online if seen within 5 minutes
     }
 
     public function getStatus(): string
@@ -97,7 +98,7 @@ class Player extends Model
     public function updateLastSeen(): void
     {
         $this->update([
-            'last_seen_at' => now(),
+            'last_seen' => now(),
             'status' => 'active'
         ]);
     }
@@ -112,15 +113,16 @@ class Player extends Model
     public function getActivePlaylists()
     {
         return $this->playlists()
-            ->wherePivot(function ($query) {
-                $query->where(function ($q) {
-                    $q->whereNull('start_date')
-                      ->orWhere('start_date', '<=', now()->toDateString());
-                })
-                ->where(function ($q) {
-                    $q->whereNull('end_date')
-                      ->orWhere('end_date', '>=', now()->toDateString());
-                });
+            ->with(['items' => function ($q) {
+                $q->orderBy('order');
+            }, 'items.mediaFile:id,name,filename,mime_type,file_size,duration,file_path,checksum'])
+            ->where(function ($query) {
+                $query->whereNull('player_playlists.start_date')
+                      ->orWhere('player_playlists.start_date', '<=', now()->toDateString());
+            })
+            ->where(function ($query) {
+                $query->whereNull('player_playlists.end_date')
+                      ->orWhere('player_playlists.end_date', '>=', now()->toDateString());
             })
             ->get();
     }
@@ -128,15 +130,15 @@ class Player extends Model
     // Scopes
     public function scopeOnline($query)
     {
-        return $query->where('last_seen_at', '>=', now()->subMinutes(5))
+        return $query->where('last_seen', '>=', now()->subMinutes(5))
                     ->where('status', 'active');
     }
 
     public function scopeOffline($query)
     {
         return $query->where(function ($q) {
-            $q->where('last_seen_at', '<', now()->subMinutes(5))
-              ->orWhereNull('last_seen_at')
+            $q->where('last_seen', '<', now()->subMinutes(5))
+              ->orWhereNull('last_seen')
               ->orWhere('status', '!=', 'active');
         });
     }
@@ -144,6 +146,115 @@ class Player extends Model
     public function scopeForTenant($query, $tenantId)
     {
         return $query->where('tenant_id', $tenantId);
+    }
+
+    /**
+     * Scope for loading sync data with optimized eager loading
+     */
+    public function scopeWithSyncData($query)
+    {
+        return $query->with([
+            'tenant:id,name',
+            'playlists' => function ($q) {
+                $q->where(function ($query) {
+                    $query->whereNull('player_playlists.start_date')
+                          ->orWhere('player_playlists.start_date', '<=', now()->toDateString());
+                })
+                ->where(function ($query) {
+                    $query->whereNull('player_playlists.end_date')
+                          ->orWhere('player_playlists.end_date', '>=', now()->toDateString());
+                });
+            },
+            'playlists.items' => function ($q) {
+                $q->orderBy('order');
+            },
+            'playlists.items.mediaFile:id,name,filename,mime_type,file_size,duration,file_path,checksum',
+            'logs' => function ($q) {
+                $q->latest()->limit(10);
+            }
+        ]);
+    }
+
+    /**
+     * Scope for loading basic player data for status checks
+     */
+    public function scopeWithStatusData($query)
+    {
+        return $query->with([
+            'tenant:id,name'
+        ]);
+    }
+
+    /**
+     * Scope for loading full player configuration
+     */
+    public function scopeWithFullData($query)
+    {
+        return $query->with([
+            'tenant',
+            'playlists.items.mediaFile',
+            'logs' => function ($q) {
+                $q->latest()->limit(20);
+            },
+            'alerts' => function ($q) {
+                $q->latest()->limit(10);
+            }
+        ]);
+    }
+
+    /**
+     * Scope for active players with efficient joins
+     */
+    public function scopeActiveWithTenant($query, $tenantId = null)
+    {
+        $query = $query->where('status', 'active')
+                      ->where('last_seen', '>=', now()->subMinutes(5));
+
+        if ($tenantId) {
+            $query->where('tenant_id', $tenantId);
+        }
+
+        return $query->with('tenant:id,name');
+    }
+
+    /**
+     * Cache frequently accessed playlists for 5 minutes
+     */
+    public function getCachedActivePlaylists()
+    {
+        $cacheKey = "player_active_playlists_{$this->id}";
+
+        return Cache::remember($cacheKey, 300, function () {
+            return $this->getActivePlaylists();
+        });
+    }
+
+    /**
+     * Cache player settings for 1 hour
+     */
+    public function getCachedSettings()
+    {
+        $cacheKey = "player_settings_{$this->id}";
+
+        return Cache::remember($cacheKey, 3600, function () {
+            return [
+                'id' => $this->id,
+                'name' => $this->name,
+                'settings' => $this->settings,
+                'tenant_id' => $this->tenant_id,
+                'status' => $this->status,
+                'last_seen' => $this->last_seen?->toISOString(),
+            ];
+        });
+    }
+
+    /**
+     * Invalidate all caches for this player
+     */
+    public function invalidateCache(): void
+    {
+        Cache::forget("player_active_playlists_{$this->id}");
+        Cache::forget("player_settings_{$this->id}");
     }
 
     // QR Code and Activation Methods
@@ -188,6 +299,11 @@ class Player extends Model
             if ($player->isDirty('activation_token')) {
                 $player->deleteQRCode();
                 $player->generateQRCode();
+            }
+
+            // Invalidate cache when player data changes
+            if ($player->isDirty(['settings', 'status', 'last_seen'])) {
+                $player->invalidateCache();
             }
         });
     }

@@ -82,7 +82,7 @@ class PlayerApiController extends Controller
 
     public function heartbeat(Request $request)
     {
-        $player = $this->getAuthenticatedPlayer($request);
+        $player = $this->getAuthenticatedPlayerForStatus($request);
 
         if (!$player) {
             return $this->unauthorizedResponse();
@@ -117,7 +117,7 @@ class PlayerApiController extends Controller
 
     public function getPlaylists(Request $request)
     {
-        $player = $this->getAuthenticatedPlayer($request);
+        $player = $this->getAuthenticatedPlayerForSync($request);
 
         if (!$player) {
             return $this->unauthorizedResponse();
@@ -192,7 +192,7 @@ class PlayerApiController extends Controller
 
     public function syncDelta(Request $request)
     {
-        $player = $this->getAuthenticatedPlayer($request);
+        $player = $this->getAuthenticatedPlayerForSync($request);
 
         if (!$player) {
             return $this->unauthorizedResponse();
@@ -469,7 +469,7 @@ class PlayerApiController extends Controller
         ]);
     }
 
-    private function getAuthenticatedPlayer(Request $request): ?Player
+    private function getAuthenticatedPlayer(Request $request, string $context = 'basic'): ?Player
     {
         $playerId = $request->header('X-Player-ID');
         $apiToken = $request->header('X-API-Token');
@@ -484,7 +484,27 @@ class PlayerApiController extends Controller
             return null;
         }
 
-        return Player::find($playerId);
+        // Use different eager loading based on context
+        switch ($context) {
+            case 'sync':
+                return Player::withSyncData()->find($playerId);
+            case 'status':
+                return Player::withStatusData()->find($playerId);
+            case 'full':
+                return Player::withFullData()->find($playerId);
+            default:
+                return Player::find($playerId);
+        }
+    }
+
+    private function getAuthenticatedPlayerForSync(Request $request): ?Player
+    {
+        return $this->getAuthenticatedPlayer($request, 'sync');
+    }
+
+    private function getAuthenticatedPlayerForStatus(Request $request): ?Player
+    {
+        return $this->getAuthenticatedPlayer($request, 'status');
     }
 
     private function unauthorizedResponse()

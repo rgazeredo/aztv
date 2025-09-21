@@ -7,6 +7,8 @@ use App\Models\Playlist;
 use App\Models\PlayerLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -16,7 +18,7 @@ class PlayerController extends Controller
     {
         $tenantId = auth()->user()->tenant_id;
 
-        $query = Player::with(['tenant', 'playlists'])
+        $query = Player::withStatusData()
             ->forTenant($tenantId)
             ->withCount('logs');
 
@@ -81,9 +83,10 @@ class PlayerController extends Controller
             'groups' => $groups,
             'stats' => [
                 'total_players' => Player::forTenant($tenantId)->count(),
-                'online_players' => Player::forTenant($tenantId)->online()->count(),
+                'online_players' => Player::activeWithTenant($tenantId)->count(),
                 'offline_players' => Player::forTenant($tenantId)->offline()->count(),
             ],
+            'performance_data' => $this->getPerformanceMetrics($tenantId),
         ]);
     }
 
@@ -91,14 +94,7 @@ class PlayerController extends Controller
     {
         $this->authorize('view', $player);
 
-        $player->load([
-            'playlists' => function ($query) {
-                $query->orderBy('pivot_priority');
-            },
-            'logs' => function ($query) {
-                $query->orderBy('created_at', 'desc')->limit(50);
-            }
-        ]);
+        $player = Player::withFullData()->find($player->id);
 
         $activePlaylists = $player->getActivePlaylists();
 
@@ -276,6 +272,87 @@ class PlayerController extends Controller
 
         return redirect()->route('players.index')
             ->with('success', 'Player excluído com sucesso!');
+    }
+
+    private function getPerformanceMetrics($tenantId): array
+    {
+        $cacheKey = "performance_metrics_tenant_{$tenantId}";
+
+        return Cache::remember($cacheKey, 300, function () use ($tenantId) {
+            $query = Player::forTenant($tenantId);
+
+            // Basic metrics
+            $totalPlayers = $query->count();
+            $onlinePlayers = $query->online()->count();
+            $activePlayers = $query->where('last_seen', '>=', now()->subDay())->count();
+
+            // Sync performance metrics
+            $syncLogs = PlayerLog::whereHas('player', function ($q) use ($tenantId) {
+                $q->where('tenant_id', $tenantId);
+            })
+            ->where('created_at', '>=', now()->subHour())
+            ->where('message', 'like', '%sincroniz%')
+            ->get();
+
+            $totalSyncs = $syncLogs->count();
+            $cacheHits = $syncLogs->filter(function ($log) {
+                return isset($log->data['cache_hit']) && $log->data['cache_hit'] === true;
+            })->count();
+
+            $cacheHitRate = $totalSyncs > 0 ? round(($cacheHits / $totalSyncs) * 100, 1) : 0;
+
+            // Query performance
+            $avgQueryTime = $this->measureQueryPerformance($tenantId);
+
+            return [
+                'total_players' => $totalPlayers,
+                'online_percentage' => $totalPlayers > 0 ? round(($onlinePlayers / $totalPlayers) * 100, 1) : 0,
+                'active_24h' => $activePlayers,
+                'sync_events_last_hour' => $totalSyncs,
+                'cache_hit_rate' => $cacheHitRate,
+                'avg_query_time_ms' => $avgQueryTime,
+                'performance_score' => $this->calculatePerformanceScore($cacheHitRate, $avgQueryTime),
+                'last_updated' => now()->toISOString(),
+            ];
+        });
+    }
+
+    private function measureQueryPerformance($tenantId): float
+    {
+        DB::enableQueryLog();
+        $start = microtime(true);
+
+        // Test common queries
+        Player::withStatusData()->forTenant($tenantId)->take(5)->get();
+        Player::activeWithTenant($tenantId)->take(5)->get();
+
+        $time = (microtime(true) - $start) * 1000;
+        $queries = DB::getQueryLog();
+        DB::disableQueryLog();
+
+        return round($time, 2);
+    }
+
+    private function calculatePerformanceScore($cacheHitRate, $avgQueryTime): string
+    {
+        $score = 0;
+
+        // Cache hit rate score (50% weight)
+        if ($cacheHitRate >= 80) $score += 50;
+        elseif ($cacheHitRate >= 60) $score += 35;
+        elseif ($cacheHitRate >= 40) $score += 20;
+        else $score += 10;
+
+        // Query time score (50% weight)
+        if ($avgQueryTime <= 50) $score += 50;
+        elseif ($avgQueryTime <= 100) $score += 35;
+        elseif ($avgQueryTime <= 200) $score += 20;
+        else $score += 10;
+
+        if ($score >= 80) return 'excellent';
+        elseif ($score >= 60) return 'good';
+        elseif ($score >= 40) return 'fair';
+        else return 'poor';
     }
 
     public function regenerateToken(Player $player)
