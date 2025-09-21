@@ -489,7 +489,8 @@ export default function ApkIndex() {
                         ) : null}
                       </div>
                     </TableCell>
-                  )}
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>

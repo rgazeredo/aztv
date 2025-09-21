@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Head, router, useForm } from "@inertiajs/react";
-import ClientLayout from "@/Layouts/ClientLayout";
+import AuthenticatedLayout from "@/layouts/AuthenticatedLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

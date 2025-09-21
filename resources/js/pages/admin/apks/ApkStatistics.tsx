@@ -370,7 +370,8 @@ export default function ApkStatistics() {
                         </p>
                       </div>
                     </TableCell>
-                  )}
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>

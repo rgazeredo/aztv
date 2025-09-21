@@ -428,7 +428,8 @@ export default function TenantIndex({ tenants: initialTenants, pagination: initi
                         ) : null}
                       </div>
                     </TableCell>
-                  )}
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
