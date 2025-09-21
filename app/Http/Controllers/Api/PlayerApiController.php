@@ -10,6 +10,7 @@ use App\Models\ContentModule;
 use App\Services\PlayerCacheService;
 use App\Services\SyncCacheService;
 use App\Services\PlayerLogService;
+use App\Services\PlayerConfigService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -20,15 +21,18 @@ class PlayerApiController extends Controller
     private PlayerCacheService $playerCacheService;
     private SyncCacheService $syncCacheService;
     private PlayerLogService $playerLogService;
+    private PlayerConfigService $playerConfigService;
 
     public function __construct(
         PlayerCacheService $playerCacheService,
         SyncCacheService $syncCacheService,
-        PlayerLogService $playerLogService
+        PlayerLogService $playerLogService,
+        PlayerConfigService $playerConfigService
     ) {
         $this->playerCacheService = $playerCacheService;
         $this->syncCacheService = $syncCacheService;
         $this->playerLogService = $playerLogService;
+        $this->playerConfigService = $playerConfigService;
     }
 
     public function authenticate(Request $request)
@@ -858,5 +862,46 @@ class PlayerApiController extends Controller
         }
 
         return version_compare($activeVersion->version, $currentVersion, '>');
+    }
+
+    /**
+     * Get player configuration for sync
+     */
+    public function getPlayerConfig(Request $request)
+    {
+        $player = $this->getAuthenticatedPlayerForSync($request);
+
+        if (!$player) {
+            return $this->unauthorizedResponse();
+        }
+
+        try {
+            $configData = $this->playerConfigService->getConfigForSync($player);
+
+            PlayerLog::logInfo($player->id, 'Config sync requested', [
+                'config_version' => $configData['version'],
+                'last_updated' => $configData['last_updated'],
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'player_id' => $player->id,
+                'config' => $configData['config'],
+                'version' => $configData['version'],
+                'last_updated' => $configData['last_updated'],
+                'sync_timestamp' => now()->toISOString(),
+            ]);
+
+        } catch (\Exception $e) {
+            PlayerLog::logError($player->id, 'Config sync failed', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao obter configurações do player',
+                'error_code' => 'CONFIG_SYNC_ERROR',
+            ], 500);
+        }
     }
 }

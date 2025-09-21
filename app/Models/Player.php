@@ -307,4 +307,9 @@ class Player extends Model
             }
         });
     }
+
+    public function playerSettings(): HasMany
+    {
+        return $this->hasMany(PlayerSettings::class);
+    }
 }

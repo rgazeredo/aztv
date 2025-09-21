@@ -120,6 +120,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('players/{player}/logs', [PlayerController::class, 'logs'])->name('players.logs');
         Route::get('players/{player}/analytics', [PlayerController::class, 'analytics'])->name('players.analytics');
 
+        // Player Configuration
+        Route::get('players/{player}/config', [\App\Http\Controllers\PlayerConfigController::class, 'index'])->name('players.config.index');
+        Route::get('players/{player}/config/data', [\App\Http\Controllers\PlayerConfigController::class, 'show'])->name('players.config.show');
+        Route::put('players/{player}/config', [\App\Http\Controllers\PlayerConfigController::class, 'update'])->name('players.config.update');
+        Route::post('players/{player}/config/reset-all', [\App\Http\Controllers\PlayerConfigController::class, 'resetAll'])->name('players.config.reset-all');
+        Route::post('players/{player}/config/{settingKey}/reset', [\App\Http\Controllers\PlayerConfigController::class, 'resetSetting'])->name('players.config.reset-setting');
+        Route::get('players/{player}/config/export', [\App\Http\Controllers\PlayerConfigController::class, 'export'])->name('players.config.export');
+        Route::post('players/{player}/config/import', [\App\Http\Controllers\PlayerConfigController::class, 'import'])->name('players.config.import');
+
+        // Player Configuration API endpoints
+        Route::get('api/players/{player}/config/{settingKey}', [\App\Http\Controllers\PlayerConfigController::class, 'getSetting'])->name('api.players.config.get');
+        Route::put('api/players/{player}/config/{settingKey}', [\App\Http\Controllers\PlayerConfigController::class, 'setSetting'])->name('api.players.config.set');
+        Route::get('api/players/{player}/config-sync', [\App\Http\Controllers\PlayerConfigController::class, 'getConfigForSync'])->name('api.players.config.sync');
+        Route::post('api/generate-password', [\App\Http\Controllers\PlayerConfigController::class, 'generatePassword'])->name('api.generate-password');
+        Route::post('api/preview-theme', [\App\Http\Controllers\PlayerConfigController::class, 'previewTheme'])->name('api.preview-theme');
+
         // QR Code routes
         Route::get('qr-code/player/{player}/generate', [QRCodeController::class, 'generate'])->name('qr-code.player.generate');
         Route::get('qr-code/player/{player}/download', [QRCodeController::class, 'download'])->name('qr-code.player.download');

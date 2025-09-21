@@ -42,6 +42,9 @@ Route::middleware('player.auth')->prefix('player')->name('api.player.')->group(f
     Route::put('/settings', [PlayerApiController::class, 'updateSettings'])
         ->name('settings.update');
 
+    Route::get('/config', [PlayerApiController::class, 'getPlayerConfig'])
+        ->name('config');
+
     // Content Synchronization
     Route::get('/playlists', [PlayerApiController::class, 'getPlaylists'])
         ->name('playlists');
