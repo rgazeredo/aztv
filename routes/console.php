@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Schedule;
 use App\Jobs\UpdateCurrencyRates;
 use App\Jobs\ProcessScheduledPlaylists;
 use App\Jobs\CheckPlayerStatus;
+use App\Jobs\RecurringPlaylistScheduler;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -37,4 +38,11 @@ Schedule::job(new CheckPlayerStatus())
     ->everyTwoMinutes()
     ->name('check-player-status')
     ->withoutOverlapping(5) // Prevent overlapping for 5 minutes
+    ->onOneServer();
+
+// Schedule playlist scheduler every minute
+Schedule::job(new RecurringPlaylistScheduler())
+    ->everyMinute()
+    ->name('recurring-playlist-scheduler')
+    ->withoutOverlapping(2) // Prevent overlapping for 2 minutes
     ->onOneServer();
