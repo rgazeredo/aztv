@@ -211,4 +211,157 @@ class PlaylistSchedule extends Model
 
         return true;
     }
+
+    /**
+     * Check if this schedule can override another based on priority
+     */
+    public function canOverride(PlaylistSchedule $other): bool
+    {
+        return $this->priority > $other->priority;
+    }
+
+    /**
+     * Get conflicting schedules for this instance
+     */
+    public function getConflictingSchedules(): \Illuminate\Database\Eloquent\Collection
+    {
+        return static::active()
+            ->where('tenant_id', $this->tenant_id)
+            ->where('id', '!=', $this->id ?? 0)
+            ->get()
+            ->filter(function (PlaylistSchedule $schedule) {
+                return $this->hasConflictWith($schedule);
+            });
+    }
+
+    /**
+     * Check if the schedule is valid for the future
+     */
+    public function isValidForFuture(): bool
+    {
+        if ($this->start_date && $this->start_time) {
+            $startDateTime = $this->start_date->copy()
+                ->setTimeFromTimeString($this->start_time->format('H:i:s'));
+
+            return $startDateTime->gt(now());
+        }
+
+        return true; // If no specific start date/time, assume it's valid
+    }
+
+    /**
+     * Get the duration of this schedule in minutes
+     */
+    public function getDurationInMinutes(): ?int
+    {
+        if (!$this->start_time || !$this->end_time) {
+            return null;
+        }
+
+        return $this->end_time->diffInMinutes($this->start_time);
+    }
+
+    /**
+     * Check if the schedule duration is valid
+     */
+    public function hasValidDuration(): bool
+    {
+        $duration = $this->getDurationInMinutes();
+
+        if ($duration === null) {
+            return true; // No time constraint
+        }
+
+        return $duration >= 5 && $duration <= 1440; // 5 minutes to 24 hours
+    }
+
+    /**
+     * Scope for schedules that conflict with given parameters
+     */
+    public function scopeConflictsWith($query, $startDate, $endDate, $startTime, $endTime, $daysOfWeek = null)
+    {
+        return $query->where(function ($q) use ($startDate, $endDate, $startTime, $endTime, $daysOfWeek) {
+            // Date range overlap
+            if ($startDate || $endDate) {
+                $q->where(function ($dateQuery) use ($startDate, $endDate) {
+                    if ($startDate) {
+                        $dateQuery->where(function ($q1) use ($startDate) {
+                            $q1->whereNull('end_date')
+                               ->orWhere('end_date', '>=', $startDate);
+                        });
+                    }
+                    if ($endDate) {
+                        $dateQuery->where(function ($q2) use ($endDate) {
+                            $q2->whereNull('start_date')
+                               ->orWhere('start_date', '<=', $endDate);
+                        });
+                    }
+                });
+            }
+
+            // Time range overlap
+            if ($startTime || $endTime) {
+                $q->where(function ($timeQuery) use ($startTime, $endTime) {
+                    if ($startTime) {
+                        $timeQuery->where(function ($q1) use ($startTime) {
+                            $q1->whereNull('end_time')
+                               ->orWhere('end_time', '>', $startTime);
+                        });
+                    }
+                    if ($endTime) {
+                        $timeQuery->where(function ($q2) use ($endTime) {
+                            $q2->whereNull('start_time')
+                               ->orWhere('start_time', '<', $endTime);
+                        });
+                    }
+                });
+            }
+
+            // Days of week overlap
+            if ($daysOfWeek && is_array($daysOfWeek)) {
+                $q->where(function ($dayQuery) use ($daysOfWeek) {
+                    $dayQuery->whereNull('days_of_week');
+                    foreach ($daysOfWeek as $day) {
+                        $dayQuery->orWhereJsonContains('days_of_week', $day);
+                    }
+                });
+            }
+        });
+    }
+
+    /**
+     * Scope for schedules with higher priority
+     */
+    public function scopeWithHigherPriority($query, int $priority)
+    {
+        return $query->where('priority', '>', $priority);
+    }
+
+    /**
+     * Scope for schedules with lower priority
+     */
+    public function scopeWithLowerPriority($query, int $priority)
+    {
+        return $query->where('priority', '<', $priority);
+    }
+
+    /**
+     * Get validation rules for this model
+     */
+    public static function getValidationRules(?int $excludeId = null): array
+    {
+        return [
+            'playlist_id' => ['required', 'integer', 'exists:playlists,id'],
+            'tenant_id' => ['required', 'integer', 'exists:tenants,id'],
+            'name' => ['required', 'string', 'max:255'],
+            'start_date' => ['nullable', 'date', 'after_or_equal:today'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+            'start_time' => ['nullable', 'date_format:H:i'],
+            'end_time' => ['nullable', 'date_format:H:i', 'after:start_time'],
+            'days_of_week' => ['nullable', 'array'],
+            'days_of_week.*' => ['integer', 'between:0,6'],
+            'priority' => ['required', 'integer', 'between:1,10'],
+            'is_active' => ['boolean'],
+        ];
+    }
 }

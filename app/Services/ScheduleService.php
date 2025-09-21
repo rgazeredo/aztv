@@ -4,11 +4,19 @@ namespace App\Services;
 
 use App\Models\PlaylistSchedule;
 use App\Models\Playlist;
+use App\Services\PlaylistScheduleValidationService;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
 class ScheduleService
 {
+    private PlaylistScheduleValidationService $validationService;
+
+    public function __construct(PlaylistScheduleValidationService $validationService)
+    {
+        $this->validationService = $validationService;
+    }
+
     public function createSchedule(int $playlistId, array $scheduleData): PlaylistSchedule
     {
         $playlist = Playlist::findOrFail($playlistId);
@@ -16,38 +24,18 @@ class ScheduleService
         $scheduleData['playlist_id'] = $playlistId;
         $scheduleData['tenant_id'] = $playlist->tenant_id;
 
-        // Validate schedule data
-        $this->validateScheduleData($scheduleData);
+        // Use the new validation service
+        $validatedData = $this->validationService->validateSchedule($scheduleData);
 
-        // Check for conflicts if validation is required
-        if (!empty($scheduleData['check_conflicts']) && $scheduleData['check_conflicts']) {
-            $conflicts = $this->checkScheduleConflicts($scheduleData);
-            if ($conflicts->isNotEmpty()) {
-                throw new \InvalidArgumentException(
-                    'Conflito detectado com os agendamentos: ' . $conflicts->pluck('name')->implode(', ')
-                );
-            }
-        }
-
-        return PlaylistSchedule::create($scheduleData);
+        return PlaylistSchedule::create($validatedData);
     }
 
     public function updateSchedule(PlaylistSchedule $schedule, array $scheduleData): PlaylistSchedule
     {
-        // Validate schedule data
-        $this->validateScheduleData($scheduleData);
+        // Use the new validation service for updates
+        $validatedData = $this->validationService->validateScheduleUpdate($schedule, $scheduleData);
 
-        // Check for conflicts excluding current schedule
-        if (!empty($scheduleData['check_conflicts']) && $scheduleData['check_conflicts']) {
-            $conflicts = $this->checkScheduleConflicts($scheduleData, $schedule->id);
-            if ($conflicts->isNotEmpty()) {
-                throw new \InvalidArgumentException(
-                    'Conflito detectado com os agendamentos: ' . $conflicts->pluck('name')->implode(', ')
-                );
-            }
-        }
-
-        $schedule->update($scheduleData);
+        $schedule->update($validatedData);
         return $schedule->fresh();
     }
 
@@ -159,53 +147,6 @@ class ScheduleService
         return $preview;
     }
 
-    protected function validateScheduleData(array $scheduleData): void
-    {
-        // Validate required fields
-        if (empty($scheduleData['name'])) {
-            throw new \InvalidArgumentException('Nome do agendamento é obrigatório');
-        }
-
-        // Validate date range
-        if (!empty($scheduleData['start_date']) && !empty($scheduleData['end_date'])) {
-            $startDate = Carbon::parse($scheduleData['start_date']);
-            $endDate = Carbon::parse($scheduleData['end_date']);
-
-            if ($startDate->gt($endDate)) {
-                throw new \InvalidArgumentException('Data de início deve ser anterior à data de fim');
-            }
-        }
-
-        // Validate time range
-        if (!empty($scheduleData['start_time']) && !empty($scheduleData['end_time'])) {
-            $startTime = Carbon::parse($scheduleData['start_time']);
-            $endTime = Carbon::parse($scheduleData['end_time']);
-
-            if ($startTime->format('H:i:s') >= $endTime->format('H:i:s')) {
-                throw new \InvalidArgumentException('Horário de início deve ser anterior ao horário de fim');
-            }
-        }
-
-        // Validate days of week
-        if (!empty($scheduleData['days_of_week'])) {
-            if (!is_array($scheduleData['days_of_week'])) {
-                throw new \InvalidArgumentException('Dias da semana devem ser um array');
-            }
-
-            foreach ($scheduleData['days_of_week'] as $day) {
-                if (!is_int($day) || $day < 0 || $day > 6) {
-                    throw new \InvalidArgumentException('Dias da semana devem ser números entre 0 e 6');
-                }
-            }
-        }
-
-        // Validate priority
-        if (!empty($scheduleData['priority'])) {
-            if (!is_int($scheduleData['priority']) || $scheduleData['priority'] < 1) {
-                throw new \InvalidArgumentException('Prioridade deve ser um número inteiro maior que 0');
-            }
-        }
-    }
 
     protected function wouldBeActiveOnDate(array $scheduleData, Carbon $date): bool
     {
@@ -249,5 +190,62 @@ class ScheduleService
         }
 
         return "{$startTime} - {$endTime}";
+    }
+
+    /**
+     * Create schedule with conflict override capability
+     */
+    public function createScheduleWithOverride(int $playlistId, array $scheduleData, bool $allowOverride = false): PlaylistSchedule
+    {
+        $playlist = Playlist::findOrFail($playlistId);
+
+        $scheduleData['playlist_id'] = $playlistId;
+        $scheduleData['tenant_id'] = $playlist->tenant_id;
+
+        if ($allowOverride) {
+            // Check what conflicts can be overridden
+            $overrideAnalysis = $this->validationService->canOverrideExistingSchedules($scheduleData);
+
+            if ($overrideAnalysis['has_conflicts']) {
+                throw new \InvalidArgumentException(
+                    'Cannot override schedules with higher or equal priority: ' .
+                    collect($overrideAnalysis['blocked_by'])->pluck('name')->implode(', ')
+                );
+            }
+
+            // Deactivate schedules that can be overridden
+            if (!empty($overrideAnalysis['can_override'])) {
+                $overrideIds = collect($overrideAnalysis['can_override'])->pluck('id');
+                PlaylistSchedule::whereIn('id', $overrideIds)->update(['is_active' => false]);
+            }
+        }
+
+        // Validate and create
+        $validatedData = $this->validationService->validateSchedule($scheduleData);
+        return PlaylistSchedule::create($validatedData);
+    }
+
+    /**
+     * Get validation service instance
+     */
+    public function getValidationService(): PlaylistScheduleValidationService
+    {
+        return $this->validationService;
+    }
+
+    /**
+     * Check schedule conflicts without creating
+     */
+    public function checkConflicts(array $scheduleData, ?int $excludeScheduleId = null): array
+    {
+        return $this->validationService->canOverrideExistingSchedules($scheduleData, $excludeScheduleId);
+    }
+
+    /**
+     * Validate schedule data without creating
+     */
+    public function validateScheduleData(array $scheduleData, ?int $excludeScheduleId = null): array
+    {
+        return $this->validationService->validateSchedule($scheduleData, $excludeScheduleId);
     }
 }
