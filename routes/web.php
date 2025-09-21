@@ -121,8 +121,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // QR Code routes
         Route::get('qr-code/player/{player}/generate', [QRCodeController::class, 'generate'])->name('qr-code.player.generate');
         Route::get('qr-code/player/{player}/download', [QRCodeController::class, 'download'])->name('qr-code.player.download');
+        Route::get('qr-code/player/{player}/info', [QRCodeController::class, 'info'])->name('qr-code.player.info');
         Route::post('qr-code/player/{player}/regenerate', [QRCodeController::class, 'regenerate'])->name('qr-code.player.regenerate');
-        Route::get('qr-code/player/{player}/show', [QRCodeController::class, 'show'])->name('qr-code.player.show');
+        Route::delete('qr-code/player/{player}', [QRCodeController::class, 'delete'])->name('qr-code.player.delete');
+        Route::post('qr-code/bulk-generate', [QRCodeController::class, 'bulkGenerate'])->name('qr-code.bulk-generate');
 
         // Media
         Route::resource('media', MediaController::class);

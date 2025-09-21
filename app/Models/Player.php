@@ -167,7 +167,7 @@ class Player extends Model
     public function hasQRCode(): bool
     {
         $qrCodeService = app(QRCodeService::class);
-        return $qrCodeService->getPlayerQRCodePath($this) !== null;
+        return $qrCodeService->playerHasQRCode($this);
     }
 
     public function deleteQRCode(): bool
