@@ -140,9 +140,27 @@ class MediaController extends Controller
             ->distinct()
             ->pluck('folder');
 
+        $tenant = auth()->user()->tenant;
+        $plan = $tenant->getActivePlan();
+
         return Inertia::render('Media/Create', [
             'folders' => $folders,
             'max_file_size' => $this->getMaxFileSize(),
+            'limits' => [
+                'storage' => [
+                    'current_gb' => round($tenant->getCurrentStorageUsage(), 2),
+                    'limit_gb' => $tenant->getStorageLimitGb(),
+                    'percentage' => $tenant->getStorageLimitGb() > 0 ?
+                        round(($tenant->getCurrentStorageUsage() / $tenant->getStorageLimitGb()) * 100, 1) : 0,
+                    'remaining_gb' => max(0, $tenant->getStorageLimitGb() - $tenant->getCurrentStorageUsage()),
+                    'is_at_limit' => $tenant->isAtStorageLimit(),
+                    'formatted_current' => $this->formatBytes($tenant->getCurrentStorageUsage() * 1024 * 1024 * 1024),
+                    'formatted_limit' => $this->formatBytes($tenant->getStorageLimitGb() * 1024 * 1024 * 1024),
+                    'formatted_remaining' => $this->formatBytes(max(0, $tenant->getStorageLimitGb() - $tenant->getCurrentStorageUsage()) * 1024 * 1024 * 1024),
+                ],
+                'plan_name' => $plan->name,
+                'upgrade_url' => route('billing.plans'),
+            ],
         ]);
     }
 
@@ -155,6 +173,35 @@ class MediaController extends Controller
             'tags' => 'nullable|string|max:1000',
             'display_time' => 'nullable|integer|min:1|max:300',
         ]);
+
+        $tenant = auth()->user()->tenant;
+        $plan = $tenant->getActivePlan();
+
+        // Verificar limite de armazenamento para cada arquivo
+        $totalFilesSize = 0;
+        foreach ($request->file('files') as $file) {
+            $totalFilesSize += $file->getSize();
+        }
+
+        $currentUsageGb = $tenant->getCurrentStorageUsage();
+        $uploadSizeGb = $totalFilesSize / (1024 * 1024 * 1024);
+        $storageLimitGb = $tenant->getStorageLimitGb();
+
+        if (($currentUsageGb + $uploadSizeGb) > $storageLimitGb) {
+            $upgradeUrl = route('billing.plans');
+            $remainingSpace = max(0, $storageLimitGb - $currentUsageGb);
+
+            return back()->withErrors([
+                'storage_limit' => sprintf(
+                    'Você está tentando fazer upload de %s, mas só restam %s disponíveis do seu limite de %s GB. ' .
+                    '<a href="%s" class="text-blue-600 hover:underline">Clique aqui para fazer upgrade do seu plano</a>.',
+                    $this->formatBytes($totalFilesSize),
+                    $this->formatBytes($remainingSpace * 1024 * 1024 * 1024),
+                    $storageLimitGb,
+                    $upgradeUrl
+                )
+            ])->withInput();
+        }
 
         $uploadedFiles = [];
         $errors = [];
