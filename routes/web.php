@@ -14,6 +14,7 @@ use App\Http\Controllers\PlaylistController;
 use App\Http\Controllers\ContentModuleController;
 use App\Http\Controllers\ActivationController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\QRCodeController;
 
 // API routes for pricing
 Route::get('/api/pricing/plans', [PricingController::class, 'getPlans'])->name('api.pricing.plans');
@@ -115,6 +116,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('players/bulk-action', [PlayerController::class, 'bulkAction'])->name('players.bulk-action');
         Route::get('players/{player}/logs', [PlayerController::class, 'logs'])->name('players.logs');
         Route::get('players/{player}/analytics', [PlayerController::class, 'analytics'])->name('players.analytics');
+
+        // QR Code routes
+        Route::get('qr-code/player/{player}/generate', [QRCodeController::class, 'generate'])->name('qr-code.player.generate');
+        Route::get('qr-code/player/{player}/download', [QRCodeController::class, 'download'])->name('qr-code.player.download');
+        Route::post('qr-code/player/{player}/regenerate', [QRCodeController::class, 'regenerate'])->name('qr-code.player.regenerate');
+        Route::get('qr-code/player/{player}/show', [QRCodeController::class, 'show'])->name('qr-code.player.show');
 
         // Media
         Route::resource('media', MediaController::class);

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use App\Services\QRCodeService;
 
 class Player extends Model
 {
@@ -138,5 +139,51 @@ class Player extends Model
     public function scopeForTenant($query, $tenantId)
     {
         return $query->where('tenant_id', $tenantId);
+    }
+
+    // QR Code and Activation Methods
+    public function getActivationUrl(): string
+    {
+        return config('app.url') . "/api/player/activate?token={$this->activation_token}";
+    }
+
+    public function generateQRCode(array $options = []): string
+    {
+        $qrCodeService = app(QRCodeService::class);
+        return $qrCodeService->savePlayerQRCode($this, $options);
+    }
+
+    public function getQRCodeUrl(): ?string
+    {
+        $qrCodeService = app(QRCodeService::class);
+        return $qrCodeService->getPlayerQRCodeUrl($this);
+    }
+
+    public function hasQRCode(): bool
+    {
+        $qrCodeService = app(QRCodeService::class);
+        return $qrCodeService->getPlayerQRCodePath($this) !== null;
+    }
+
+    public function deleteQRCode(): bool
+    {
+        $qrCodeService = app(QRCodeService::class);
+        return $qrCodeService->deletePlayerQRCode($this);
+    }
+
+    protected static function booted()
+    {
+        static::created(function ($player) {
+            // Automatically generate QR code after player creation
+            $player->generateQRCode();
+        });
+
+        static::updated(function ($player) {
+            // Regenerate QR code if activation token changed
+            if ($player->isDirty('activation_token')) {
+                $player->deleteQRCode();
+                $player->generateQRCode();
+            }
+        });
     }
 }
