@@ -195,6 +195,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('alerts', \App\Http\Controllers\AlertController::class);
         Route::post('alerts/{alertRule}/toggle', [\App\Http\Controllers\AlertController::class, 'toggle'])->name('alerts.toggle');
         Route::post('alerts/{alertRule}/test', [\App\Http\Controllers\AlertController::class, 'test'])->name('alerts.test');
+
+        // Tenant Settings
+        Route::get('settings', [\App\Http\Controllers\TenantSettingsController::class, 'index'])->name('settings.index');
+        Route::get('settings/{category}', [\App\Http\Controllers\TenantSettingsController::class, 'show'])->name('settings.show');
+        Route::put('settings', [\App\Http\Controllers\TenantSettingsController::class, 'update'])->name('settings.update');
+        Route::post('settings/{category}/reset', [\App\Http\Controllers\TenantSettingsController::class, 'reset'])->name('settings.reset');
+        Route::get('settings/export', [\App\Http\Controllers\TenantSettingsController::class, 'export'])->name('settings.export');
+        Route::post('settings/import', [\App\Http\Controllers\TenantSettingsController::class, 'import'])->name('settings.import');
+
+        // Settings API endpoints
+        Route::get('api/settings/{key}', [\App\Http\Controllers\TenantSettingsController::class, 'getValue'])->name('api.settings.get');
+        Route::put('api/settings/{key}', [\App\Http\Controllers\TenantSettingsController::class, 'setValue'])->name('api.settings.set');
     });
 
     Route::patch('settings/theme', function () {
