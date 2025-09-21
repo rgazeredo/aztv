@@ -1,503 +1,329 @@
-import React, { useState } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
-import { useForm } from 'react-hook-form';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-    Form,
-    FormControl,
-    FormDescription,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-// import { Textarea } from '@/components/ui/textarea';
+import { useState } from "react";
+import { Head, router, useForm } from "@inertiajs/react";
+import ClientLayout from "@/Layouts/ClientLayout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from '@/components/ui/select';
-import {
-    IconDevices,
-    IconArrowLeft,
-    IconQrcode,
-    IconCopy,
-    IconCheck,
-    IconX,
-    IconRefresh
-} from '@tabler/icons-react';
-import { cn } from '@/lib/utils';
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { IconArrowLeft, IconSave, IconRefresh } from "@tabler/icons-react";
+import { toast } from "sonner";
+import ActivationQRCode from "@/components/players/ActivationQRCode";
 
-interface FormData {
-    name: string;
-    alias?: string;
-    location?: string;
-    group?: string;
-    description?: string;
-    settings: {
-        volume: number;
-        sync_interval: number;
-        display_mode: string;
-        auto_restart: boolean;
-        screenshot_interval: number;
-    };
+interface CreateProps {
+    groups?: string[];
+    activationCode?: string;
 }
 
-interface Props {
-    groups: string[];
-    defaultSettings: {
-        volume: number;
-        sync_interval: number;
-        display_mode: string;
-        auto_restart: boolean;
-        screenshot_interval: number;
-    };
-}
-
-export default function PlayersCreate({ groups, defaultSettings }: Props) {
-    const [loading, setLoading] = useState(false);
-    const [generatedToken, setGeneratedToken] = useState<string | null>(null);
-    const [copySuccess, setCopySuccess] = useState(false);
-
-    const form = useForm<FormData>({
-        defaultValues: {
-            name: '',
-            alias: '',
-            location: '',
-            group: '',
-            description: '',
-            settings: defaultSettings
+export default function Create({ groups = [], activationCode }: CreateProps) {
+    const { data, setData, post, processing, errors } = useForm({
+        name: "",
+        description: "",
+        location: "",
+        group: "",
+        activation_code: activationCode || "",
+        settings: {
+            volume: 80,
+            sync_interval: 30,
+            display_mode: "fullscreen",
+            auto_restart: true,
+            debug_mode: false,
         }
     });
 
-    const onSubmit = async (data: FormData) => {
-        setLoading(true);
+    const [showAdvanced, setShowAdvanced] = useState(false);
 
-        try {
-            router.post('/players', data, {
-                onSuccess: (page) => {
-                    // If the response includes the created player with token
-                    const createdPlayer = page.props.player as any;
-                    if (createdPlayer?.activation_token) {
-                        setGeneratedToken(createdPlayer.activation_token);
-                    }
-                    setLoading(false);
-                },
-                onError: (errors) => {
-                    setLoading(false);
-                    // Handle validation errors
-                    Object.keys(errors).forEach((key) => {
-                        if (key.includes('.')) {
-                            const [parent, child] = key.split('.');
-                            form.setError(`${parent}.${child}` as any, {
-                                message: errors[key]
-                            });
-                        } else {
-                            form.setError(key as any, {
-                                message: errors[key]
-                            });
-                        }
-                    });
-                }
-            });
-        } catch (error) {
-            setLoading(false);
-        }
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+
+        post(route("players.store"), {
+            onSuccess: () => {
+                toast.success("Player criado com sucesso!");
+            },
+            onError: () => {
+                toast.error("Erro ao criar player. Verifique os dados.");
+            }
+        });
     };
 
-    const generatePreviewToken = () => {
-        // Generate a preview token for demonstration
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        let result = '';
-        for (let i = 0; i < 8; i++) {
-            result += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        setGeneratedToken(result);
+    const generateNewCode = () => {
+        router.reload({
+            data: { generate_code: true },
+            onSuccess: () => {
+                toast.success("Novo código gerado!");
+            }
+        });
     };
-
-    const copyToClipboard = async (text: string) => {
-        try {
-            await navigator.clipboard.writeText(text);
-            setCopySuccess(true);
-            setTimeout(() => setCopySuccess(false), 2000);
-        } catch (error) {
-            console.error('Failed to copy:', error);
-        }
-    };
-
-    const displayModeOptions = [
-        { value: 'fullscreen', label: 'Tela Cheia' },
-        { value: 'windowed', label: 'Janela' },
-        { value: 'kiosk', label: 'Modo Quiosque' },
-    ];
 
     return (
-        <AuthenticatedLayout>
-            <Head title="Criar Novo Player" />
+        <ClientLayout>
+            <Head title="Novo Player" />
 
-            <div className="py-12">
-                <div className="mx-auto max-w-4xl sm:px-6 lg:px-8">
-                    <div className="mb-6">
-                        <Button variant="outline" asChild>
-                            <Link href="/players">
-                                <IconArrowLeft className="h-4 w-4 mr-2" />
-                                Voltar para Players
-                            </Link>
-                        </Button>
+            <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                    <Button variant="outline" size="sm" asChild>
+                        <a href={route("players.index")}>
+                            <IconArrowLeft className="h-4 w-4 mr-2" />
+                            Voltar
+                        </a>
+                    </Button>
+                    <div>
+                        <h1 className="text-3xl font-bold">Novo Player</h1>
+                        <p className="text-gray-600">
+                            Cadastre um novo dispositivo player na sua rede
+                        </p>
                     </div>
+                </div>
 
-                    <div className="grid gap-6 lg:grid-cols-3">
-                        {/* Main Form */}
-                        <div className="lg:col-span-2">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <IconDevices className="h-5 w-5" />
-                                        Criar Novo Player
-                                    </CardTitle>
-                                    <CardDescription>
-                                        Configure um novo dispositivo Android para o sistema
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <Form {...form}>
-                                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                                            {/* Basic Information */}
-                                            <div className="space-y-4">
-                                                <h3 className="text-lg font-medium">Informações Básicas</h3>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Form */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Informações do Player</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="name">Nome *</Label>
+                                    <Input
+                                        id="name"
+                                        value={data.name}
+                                        onChange={(e) => setData("name", e.target.value)}
+                                        placeholder="Ex: Player Recepção"
+                                        required
+                                    />
+                                    {errors.name && (
+                                        <p className="text-sm text-red-600">{errors.name}</p>
+                                    )}
+                                </div>
 
-                                                <FormField
-                                                    control={form.control}
-                                                    name="name"
-                                                    rules={{ required: 'Nome é obrigatório' }}
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Nome do Player *</FormLabel>
-                                                            <FormControl>
-                                                                <Input placeholder="Ex: TV Sala Principal" {...field} />
-                                                            </FormControl>
-                                                            <FormDescription>
-                                                                Nome identificador do dispositivo
-                                                            </FormDescription>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
+                                <div className="space-y-2">
+                                    <Label htmlFor="description">Descrição</Label>
+                                    <Textarea
+                                        id="description"
+                                        value={data.description}
+                                        onChange={(e) => setData("description", e.target.value)}
+                                        placeholder="Descrição opcional do player"
+                                        rows={3}
+                                    />
+                                    {errors.description && (
+                                        <p className="text-sm text-red-600">{errors.description}</p>
+                                    )}
+                                </div>
 
-                                                <FormField
-                                                    control={form.control}
-                                                    name="alias"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Apelido</FormLabel>
-                                                            <FormControl>
-                                                                <Input placeholder="Ex: TV01" {...field} />
-                                                            </FormControl>
-                                                            <FormDescription>
-                                                                Nome curto para identificação rápida
-                                                            </FormDescription>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
+                                <div className="space-y-2">
+                                    <Label htmlFor="location">Localização</Label>
+                                    <Input
+                                        id="location"
+                                        value={data.location}
+                                        onChange={(e) => setData("location", e.target.value)}
+                                        placeholder="Ex: Sala de Espera, Andar 2"
+                                    />
+                                    {errors.location && (
+                                        <p className="text-sm text-red-600">{errors.location}</p>
+                                    )}
+                                </div>
 
-                                                <div className="grid gap-4 sm:grid-cols-2">
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="location"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Localização</FormLabel>
-                                                                <FormControl>
-                                                                    <Input placeholder="Ex: Sala de Espera" {...field} />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
+                                {groups.length > 0 && (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="group">Grupo</Label>
+                                        <Select value={data.group} onValueChange={(value) => setData("group", value)}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Selecione um grupo" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="">Nenhum grupo</SelectItem>
+                                                {groups.map((group) => (
+                                                    <SelectItem key={group} value={group}>
+                                                        {group}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        {errors.group && (
+                                            <p className="text-sm text-red-600">{errors.group}</p>
+                                        )}
+                                    </div>
+                                )}
 
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="group"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Grupo</FormLabel>
-                                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                                    <FormControl>
-                                                                        <SelectTrigger>
-                                                                            <SelectValue placeholder="Selecionar grupo" />
-                                                                        </SelectTrigger>
-                                                                    </FormControl>
-                                                                    <SelectContent>
-                                                                        {groups.map((group) => (
-                                                                            <SelectItem key={group} value={group}>
-                                                                                {group}
-                                                                            </SelectItem>
-                                                                        ))}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                </div>
+                                <Separator />
 
-                                                <FormField
-                                                    control={form.control}
-                                                    name="description"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Descrição</FormLabel>
-                                                            <FormControl>
-                                                                <Input
-                                                                    placeholder="Descrição detalhada do player..."
-                                                                    {...field}
-                                                                />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            </div>
+                                {/* Advanced Settings */}
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-base font-medium">Configurações Avançadas</Label>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setShowAdvanced(!showAdvanced)}
+                                        >
+                                            {showAdvanced ? "Ocultar" : "Mostrar"}
+                                        </Button>
+                                    </div>
 
-                                            {/* Settings */}
-                                            <div className="space-y-4 border-t pt-6">
-                                                <h3 className="text-lg font-medium">Configurações Iniciais</h3>
-
-                                                <div className="grid gap-4 sm:grid-cols-2">
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="settings.volume"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Volume Padrão (%)</FormLabel>
-                                                                <FormControl>
-                                                                    <Input
-                                                                        type="number"
-                                                                        min="0"
-                                                                        max="100"
-                                                                        {...field}
-                                                                        onChange={e => field.onChange(parseInt(e.target.value))}
-                                                                    />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="settings.sync_interval"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Intervalo de Sinc. (min)</FormLabel>
-                                                                <FormControl>
-                                                                    <Input
-                                                                        type="number"
-                                                                        min="1"
-                                                                        max="60"
-                                                                        {...field}
-                                                                        onChange={e => field.onChange(parseInt(e.target.value))}
-                                                                    />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="settings.display_mode"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Modo de Exibição</FormLabel>
-                                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                                    <FormControl>
-                                                                        <SelectTrigger>
-                                                                            <SelectValue />
-                                                                        </SelectTrigger>
-                                                                    </FormControl>
-                                                                    <SelectContent>
-                                                                        {displayModeOptions.map((option) => (
-                                                                            <SelectItem key={option.value} value={option.value}>
-                                                                                {option.label}
-                                                                            </SelectItem>
-                                                                        ))}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="settings.screenshot_interval"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Screenshot (min)</FormLabel>
-                                                                <FormControl>
-                                                                    <Input
-                                                                        type="number"
-                                                                        min="0"
-                                                                        max="60"
-                                                                        {...field}
-                                                                        onChange={e => field.onChange(parseInt(e.target.value))}
-                                                                    />
-                                                                </FormControl>
-                                                                <FormDescription>
-                                                                    0 = desabilitado
-                                                                </FormDescription>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
+                                    {showAdvanced && (
+                                        <div className="space-y-4 pt-4 border-t">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="volume">Volume Padrão (%)</Label>
+                                                    <Input
+                                                        id="volume"
+                                                        type="number"
+                                                        min="0"
+                                                        max="100"
+                                                        value={data.settings.volume}
+                                                        onChange={(e) => setData("settings", {
+                                                            ...data.settings,
+                                                            volume: parseInt(e.target.value) || 0
+                                                        })}
                                                     />
                                                 </div>
 
-                                                <FormField
-                                                    control={form.control}
-                                                    name="settings.auto_restart"
-                                                    render={({ field }) => (
-                                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                                            <div className="space-y-0.5">
-                                                                <FormLabel className="text-base">
-                                                                    Reinício Automático
-                                                                </FormLabel>
-                                                                <FormDescription>
-                                                                    Reiniciar automaticamente em caso de falha
-                                                                </FormDescription>
-                                                            </div>
-                                                            <FormControl>
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={field.value}
-                                                                    onChange={field.onChange}
-                                                                    className="rounded"
-                                                                />
-                                                            </FormControl>
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            </div>
-
-                                            {/* Submit Buttons */}
-                                            <div className="flex gap-4 pt-6">
-                                                <Button type="submit" disabled={loading} className="flex-1">
-                                                    {loading ? 'Criando...' : 'Criar Player'}
-                                                </Button>
-                                                <Button type="button" variant="outline" asChild>
-                                                    <Link href="/players">Cancelar</Link>
-                                                </Button>
-                                            </div>
-                                        </form>
-                                    </Form>
-                                </CardContent>
-                            </Card>
-                        </div>
-
-                        {/* Preview and QR Code */}
-                        <div className="space-y-6">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <IconQrcode className="h-5 w-5" />
-                                        Código de Ativação
-                                    </CardTitle>
-                                    <CardDescription>
-                                        Token gerado após criar o player
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    {generatedToken ? (
-                                        <div className="space-y-4">
-                                            <div className="text-center">
-                                                <div className="w-32 h-32 mx-auto bg-gray-100 rounded-lg flex items-center justify-center mb-4">
-                                                    <IconQrcode className="h-16 w-16 text-gray-400" />
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="sync_interval">Intervalo de Sincronização (min)</Label>
+                                                    <Input
+                                                        id="sync_interval"
+                                                        type="number"
+                                                        min="1"
+                                                        max="1440"
+                                                        value={data.settings.sync_interval}
+                                                        onChange={(e) => setData("settings", {
+                                                            ...data.settings,
+                                                            sync_interval: parseInt(e.target.value) || 30
+                                                        })}
+                                                    />
                                                 </div>
-                                                <p className="text-sm text-gray-600 mb-2">QR Code será gerado</p>
                                             </div>
 
                                             <div className="space-y-2">
-                                                <label className="text-sm font-medium">Código de Ativação:</label>
-                                                <div className="flex gap-2">
-                                                    <Input
-                                                        value={generatedToken}
-                                                        readOnly
-                                                        className="font-mono text-center"
-                                                    />
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => copyToClipboard(generatedToken)}
-                                                    >
-                                                        {copySuccess ? (
-                                                            <IconCheck className="h-4 w-4 text-green-600" />
-                                                        ) : (
-                                                            <IconCopy className="h-4 w-4" />
-                                                        )}
-                                                    </Button>
-                                                </div>
+                                                <Label htmlFor="display_mode">Modo de Exibição</Label>
+                                                <Select
+                                                    value={data.settings.display_mode}
+                                                    onValueChange={(value) => setData("settings", {
+                                                        ...data.settings,
+                                                        display_mode: value
+                                                    })}
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="fullscreen">Tela Cheia</SelectItem>
+                                                        <SelectItem value="windowed">Janela</SelectItem>
+                                                        <SelectItem value="kiosk">Modo Quiosque</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
 
-                                            <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                                                <p className="text-sm text-green-700">
-                                                    ✓ Player criado com sucesso! Use este código para ativar o dispositivo.
-                                                </p>
+                                            <div className="flex items-center space-x-4">
+                                                <label className="flex items-center space-x-2">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={data.settings.auto_restart}
+                                                        onChange={(e) => setData("settings", {
+                                                            ...data.settings,
+                                                            auto_restart: e.target.checked
+                                                        })}
+                                                        className="rounded"
+                                                    />
+                                                    <span className="text-sm">Reinício Automático</span>
+                                                </label>
+
+                                                <label className="flex items-center space-x-2">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={data.settings.debug_mode}
+                                                        onChange={(e) => setData("settings", {
+                                                            ...data.settings,
+                                                            debug_mode: e.target.checked
+                                                        })}
+                                                        className="rounded"
+                                                    />
+                                                    <span className="text-sm">Modo Debug</span>
+                                                </label>
                                             </div>
-                                        </div>
-                                    ) : (
-                                        <div className="text-center space-y-4">
-                                            <div className="w-32 h-32 mx-auto bg-gray-100 rounded-lg flex items-center justify-center">
-                                                <IconQrcode className="h-16 w-16 text-gray-400" />
-                                            </div>
-                                            <p className="text-sm text-gray-600">
-                                                O código de ativação será gerado após criar o player
-                                            </p>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={generatePreviewToken}
-                                            >
-                                                <IconRefresh className="h-4 w-4 mr-2" />
-                                                Preview
-                                            </Button>
                                         </div>
                                     )}
-                                </CardContent>
-                            </Card>
+                                </div>
 
-                            {/* Instructions */}
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Como Ativar</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="space-y-3 text-sm">
-                                        <div className="flex gap-3">
-                                            <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-medium">1</span>
-                                            <span>Instale o app AZ TV Player no dispositivo Android</span>
-                                        </div>
-                                        <div className="flex gap-3">
-                                            <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-medium">2</span>
-                                            <span>Abra o app e escaneie o QR Code ou digite o código</span>
-                                        </div>
-                                        <div className="flex gap-3">
-                                            <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-medium">3</span>
-                                            <span>Aguarde a sincronização automática</span>
-                                        </div>
+                                <Separator />
+
+                                <div className="flex justify-end gap-2">
+                                    <Button type="button" variant="outline" asChild>
+                                        <a href={route("players.index")}>
+                                            Cancelar
+                                        </a>
+                                    </Button>
+                                    <Button type="submit" disabled={processing}>
+                                        <IconSave className="h-4 w-4 mr-2" />
+                                        {processing ? "Salvando..." : "Criar Player"}
+                                    </Button>
+                                </div>
+                            </form>
+                        </CardContent>
+                    </Card>
+
+                    {/* QR Code Preview */}
+                    <div className="space-y-6">
+                        {data.activation_code && (
+                            <ActivationQRCode
+                                activationCode={data.activation_code}
+                                playerName={data.name || "Novo Player"}
+                            />
+                        )}
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Código de Ativação</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="activation_code">Código</Label>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            id="activation_code"
+                                            value={data.activation_code}
+                                            onChange={(e) => setData("activation_code", e.target.value)}
+                                            placeholder="Código será gerado automaticamente"
+                                            readOnly
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={generateNewCode}
+                                        >
+                                            <IconRefresh className="h-4 w-4" />
+                                        </Button>
                                     </div>
-                                </CardContent>
-                            </Card>
-                        </div>
+                                    {errors.activation_code && (
+                                        <p className="text-sm text-red-600">{errors.activation_code}</p>
+                                    )}
+                                </div>
+
+                                <div className="text-sm text-gray-600 space-y-2">
+                                    <p><strong>Como usar:</strong></p>
+                                    <ol className="list-decimal list-inside space-y-1 ml-2">
+                                        <li>Instale o app AZ TV Player no dispositivo Android</li>
+                                        <li>Abra o app e toque em "Ativar Player"</li>
+                                        <li>Escaneie o QR Code ou digite o código manualmente</li>
+                                        <li>O player será ativado automaticamente</li>
+                                    </ol>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </div>
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </ClientLayout>
     );
 }
