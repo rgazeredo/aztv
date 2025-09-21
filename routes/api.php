@@ -56,6 +56,31 @@ Route::middleware('player.auth')->prefix('player')->name('api.player.')->group(f
     Route::post('/log/error', [PlayerApiController::class, 'logError'])
         ->name('log.error');
 
+    // Enhanced Logging System
+    Route::post('/log/events', [PlayerApiController::class, 'logEvents'])
+        ->name('log.events');
+
+    Route::post('/log/batch', [PlayerApiController::class, 'logBatch'])
+        ->name('log.batch');
+
+    Route::post('/log/media/start', [PlayerApiController::class, 'logMediaStart'])
+        ->name('log.media.start');
+
+    Route::post('/log/media/end', [PlayerApiController::class, 'logMediaEnd'])
+        ->name('log.media.end');
+
+    Route::post('/log/media/error', [PlayerApiController::class, 'logMediaError'])
+        ->name('log.media.error');
+
+    Route::post('/log/connectivity/error', [PlayerApiController::class, 'logConnectivityError'])
+        ->name('log.connectivity.error');
+
+    Route::post('/log/performance', [PlayerApiController::class, 'logPerformanceMetrics'])
+        ->name('log.performance');
+
+    Route::post('/heartbeat/enhanced', [PlayerApiController::class, 'enhancedHeartbeat'])
+        ->name('heartbeat.enhanced');
+
     // App Updates
     Route::get('/update/check', [PlayerApiController::class, 'checkUpdate'])
         ->name('update.check');

@@ -9,6 +9,7 @@ use App\Models\ApkVersion;
 use App\Models\ContentModule;
 use App\Services\PlayerCacheService;
 use App\Services\SyncCacheService;
+use App\Services\PlayerLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -18,11 +19,16 @@ class PlayerApiController extends Controller
 {
     private PlayerCacheService $playerCacheService;
     private SyncCacheService $syncCacheService;
+    private PlayerLogService $playerLogService;
 
-    public function __construct(PlayerCacheService $playerCacheService, SyncCacheService $syncCacheService)
-    {
+    public function __construct(
+        PlayerCacheService $playerCacheService,
+        SyncCacheService $syncCacheService,
+        PlayerLogService $playerLogService
+    ) {
         $this->playerCacheService = $playerCacheService;
         $this->syncCacheService = $syncCacheService;
+        $this->playerLogService = $playerLogService;
     }
 
     public function authenticate(Request $request)
@@ -466,6 +472,300 @@ class PlayerApiController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Status do comando confirmado',
+        ]);
+    }
+
+    public function logEvents(Request $request)
+    {
+        $player = $this->getAuthenticatedPlayer($request);
+
+        if (!$player) {
+            return $this->unauthorizedResponse();
+        }
+
+        $validated = $request->validate([
+            'event_type' => 'required|string',
+            'event_data' => 'nullable|array',
+            'media_file_id' => 'nullable|exists:media_files,id',
+            'timestamp' => 'nullable|date',
+        ]);
+
+        $result = $this->playerLogService->logMediaEvent(
+            $player->id,
+            $validated['event_type'],
+            $validated['media_file_id'] ?? null,
+            $validated['event_data'] ?? []
+        );
+
+        if (!$result) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Rate limit exceeded or invalid event type',
+            ], 429);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Event logged successfully',
+            'log_id' => $result->id,
+        ]);
+    }
+
+    public function logBatch(Request $request)
+    {
+        $player = $this->getAuthenticatedPlayer($request);
+
+        if (!$player) {
+            return $this->unauthorizedResponse();
+        }
+
+        $validated = $request->validate([
+            'events' => 'required|array|min:1|max:100',
+            'events.*.event_type' => 'required|string',
+            'events.*.event_data' => 'nullable|array',
+            'events.*.media_file_id' => 'nullable|exists:media_files,id',
+            'events.*.timestamp' => 'nullable|date',
+        ]);
+
+        $results = $this->playerLogService->logBatch($player->id, $validated['events']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Batch logged successfully',
+            'processed' => count($results),
+            'total' => count($validated['events']),
+        ]);
+    }
+
+    public function logMediaStart(Request $request)
+    {
+        $player = $this->getAuthenticatedPlayer($request);
+
+        if (!$player) {
+            return $this->unauthorizedResponse();
+        }
+
+        $validated = $request->validate([
+            'media_file_id' => 'required|exists:media_files,id',
+            'playlist_id' => 'nullable|exists:playlists,id',
+            'metadata' => 'nullable|array',
+        ]);
+
+        $metadata = array_merge([
+            'playlist_id' => $validated['playlist_id'],
+        ], $validated['metadata'] ?? []);
+
+        $result = $this->playerLogService->logMediaStart(
+            $player->id,
+            $validated['media_file_id'],
+            $metadata
+        );
+
+        if (!$result) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Rate limit exceeded',
+            ], 429);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Media start logged',
+            'log_id' => $result->id,
+        ]);
+    }
+
+    public function logMediaEnd(Request $request)
+    {
+        $player = $this->getAuthenticatedPlayer($request);
+
+        if (!$player) {
+            return $this->unauthorizedResponse();
+        }
+
+        $validated = $request->validate([
+            'media_file_id' => 'required|exists:media_files,id',
+            'duration_played' => 'nullable|integer|min:0',
+            'completed' => 'nullable|boolean',
+            'metadata' => 'nullable|array',
+        ]);
+
+        $metadata = array_merge([
+            'duration_played' => $validated['duration_played'],
+            'completed' => $validated['completed'] ?? false,
+        ], $validated['metadata'] ?? []);
+
+        $result = $this->playerLogService->logMediaEnd(
+            $player->id,
+            $validated['media_file_id'],
+            $metadata
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Media end logged',
+            'log_id' => $result?->id,
+        ]);
+    }
+
+    public function logMediaError(Request $request)
+    {
+        $player = $this->getAuthenticatedPlayer($request);
+
+        if (!$player) {
+            return $this->unauthorizedResponse();
+        }
+
+        $validated = $request->validate([
+            'media_file_id' => 'nullable|exists:media_files,id',
+            'error_type' => 'required|string',
+            'error_message' => 'required|string',
+            'error_code' => 'nullable|string',
+            'stack_trace' => 'nullable|string',
+            'context' => 'nullable|array',
+        ]);
+
+        $errorDetails = [
+            'message' => $validated['error_message'],
+            'code' => $validated['error_code'],
+            'stack_trace' => $validated['stack_trace'],
+            'context' => $validated['context'] ?? [],
+        ];
+
+        $result = $this->playerLogService->logMediaError(
+            $player->id,
+            $validated['media_file_id'],
+            $validated['error_type'],
+            $errorDetails
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Media error logged',
+            'log_id' => $result?->id,
+        ]);
+    }
+
+    public function logConnectivityError(Request $request)
+    {
+        $player = $this->getAuthenticatedPlayer($request);
+
+        if (!$player) {
+            return $this->unauthorizedResponse();
+        }
+
+        $validated = $request->validate([
+            'error_type' => 'required|string',
+            'error_message' => 'required|string',
+            'network_info' => 'nullable|array',
+            'retry_count' => 'nullable|integer|min:0',
+            'context' => 'nullable|array',
+        ]);
+
+        $errorDetails = [
+            'message' => $validated['error_message'],
+            'network_info' => $validated['network_info'],
+            'retry_count' => $validated['retry_count'] ?? 0,
+            'context' => $validated['context'] ?? [],
+        ];
+
+        $result = $this->playerLogService->logConnectivityError(
+            $player->id,
+            $validated['error_type'],
+            $errorDetails
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Connectivity error logged',
+            'log_id' => $result?->id,
+        ]);
+    }
+
+    public function logPerformanceMetrics(Request $request)
+    {
+        $player = $this->getAuthenticatedPlayer($request);
+
+        if (!$player) {
+            return $this->unauthorizedResponse();
+        }
+
+        $validated = $request->validate([
+            'cpu_usage' => 'nullable|numeric|min:0|max:100',
+            'memory_usage' => 'nullable|integer|min:0',
+            'memory_total' => 'nullable|integer|min:0',
+            'storage_usage' => 'nullable|integer|min:0',
+            'storage_total' => 'nullable|integer|min:0',
+            'temperature' => 'nullable|numeric',
+            'network_latency' => 'nullable|integer|min:0',
+            'fps' => 'nullable|numeric|min:0',
+            'battery_level' => 'nullable|integer|min:0|max:100',
+            'additional_metrics' => 'nullable|array',
+        ]);
+
+        $metrics = array_merge(
+            array_filter($validated, function ($key) {
+                return $key !== 'additional_metrics';
+            }, ARRAY_FILTER_USE_KEY),
+            $validated['additional_metrics'] ?? []
+        );
+
+        $result = $this->playerLogService->logPerformanceMetric($player->id, $metrics);
+
+        if (!$result) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Rate limit exceeded',
+            ], 429);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Performance metrics logged',
+            'log_id' => $result->id,
+        ]);
+    }
+
+    public function enhancedHeartbeat(Request $request)
+    {
+        $player = $this->getAuthenticatedPlayer($request);
+
+        if (!$player) {
+            return $this->unauthorizedResponse();
+        }
+
+        $validated = $request->validate([
+            'status' => 'nullable|string',
+            'current_media' => 'nullable|string',
+            'app_version' => 'nullable|string',
+            'android_version' => 'nullable|string',
+            'device_model' => 'nullable|string',
+            'system_info' => 'nullable|array',
+        ]);
+
+        $player->updateLastSeen();
+
+        $systemInfo = array_merge([
+            'status' => $validated['status'] ?? 'unknown',
+            'current_media' => $validated['current_media'],
+            'app_version' => $validated['app_version'],
+            'android_version' => $validated['android_version'],
+            'device_model' => $validated['device_model'],
+        ], $validated['system_info'] ?? []);
+
+        $result = $this->playerLogService->logHeartbeat($player->id, $systemInfo);
+
+        $activePlaylists = $player->getActivePlaylists();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'server_time' => now()->toISOString(),
+                'commands' => $this->getPendingCommands($player),
+                'playlists_updated' => $this->checkPlaylistsUpdated($player),
+                'app_update_available' => $this->checkAppUpdateAvailable($player),
+                'heartbeat_logged' => $result !== null,
+            ],
         ]);
     }
 

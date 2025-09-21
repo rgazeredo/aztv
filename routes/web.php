@@ -17,6 +17,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\QRCodeController;
 use App\Http\Controllers\PlaylistScheduleController;
 use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\PlayerLogController;
 
 // API routes for pricing
 Route::get('/api/pricing/plans', [PricingController::class, 'getPlans'])->name('api.pricing.plans');
@@ -184,6 +185,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Activity Logs
         Route::resource('activity-logs', ActivityLogController::class)->only(['index', 'show']);
         Route::get('api/activity-logs', [ActivityLogController::class, 'api'])->name('activity-logs.api');
+
+        // Player Logs
+        Route::resource('player-logs', PlayerLogController::class)->only(['index', 'show']);
+        Route::get('player-logs/export', [PlayerLogController::class, 'export'])->name('player-logs.export');
+        Route::get('player-logs/dashboard', [PlayerLogController::class, 'dashboard'])->name('player-logs.dashboard');
     });
 
     Route::patch('settings/theme', function () {
