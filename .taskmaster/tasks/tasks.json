@@ -333,7 +333,7 @@
         "description": "Implementar páginas React completas para o dashboard do cliente com interface moderna incluindo cards de métricas, gráficos interativos de status dos players e seção de avisos importantes usando componentes shadcn/ui.",
         "details": "Criar as seguintes páginas React no diretório `resources/js/pages/client/dashboard/`:\n\n**Página Dashboard.tsx:**\n- Implementar layout principal com grid responsivo de cards de métricas usando shadcn/ui Card component\n- Criar cards de resumo: total de players, players online/offline, storage usado/disponível, últimos conteúdos\n- Implementar seção de estatísticas com ícones do Lucide React (Activity, HardDrive, Monitor, FileVideo)\n- Integrar dados do DashboardController via props do Inertia.js\n\n**Componente PlayerStatusChart.tsx:**\n- Implementar gráfico de pizza usando Recharts para visualizar status dos players (online vs offline)\n- Adicionar tooltip customizado com informações detalhadas\n- Implementar animações suaves e cores do tema (verde para online, vermelho para offline)\n- Mostrar percentuais e números absolutos\n\n**Componente StorageUsageBar.tsx:**\n- Criar barra de progresso customizada para uso de storage com gradiente de cores\n- Mostrar porcentagem usado vs disponível baseado no plano do tenant\n- Implementar alertas visuais quando próximo do limite (amarelo 80%, vermelho 90%)\n- Adicionar tooltip com detalhes em MB/GB\n\n**Componente ImportantAlerts.tsx:**\n- Implementar lista de avisos importantes com ícones de prioridade\n- Categorizar alertas: players offline há mais de 24h, storage próximo do limite, falhas de sincronização\n- Usar componentes Alert do shadcn/ui com diferentes variantes (warning, destructive, info)\n- Implementar botão para marcar avisos como lidos\n\n**Componente RecentActivity.tsx:**\n- Criar timeline de atividades recentes: novos uploads, players conectados/desconectados, playlists atualizadas\n- Usar componentes Badge para categorizar tipos de atividade\n- Implementar scroll infinito ou paginação para histórico extenso\n\n**Integração de dados:**\n- Consumir dados do DashboardController via Inertia.js props\n- Implementar type definitions TypeScript para todas as interfaces de dados\n- Adicionar loading states e error handling usando React Query ou SWR\n- Implementar refresh automático dos dados a cada 30 segundos",
         "testStrategy": "1. Criar testes de componente usando React Testing Library para Dashboard, PlayerStatusChart, StorageUsageBar e ImportantAlerts verificando renderização correta dos elementos\n2. Testar integração com dados do DashboardController: mockar props do Inertia.js e verificar se componentes exibem dados corretos\n3. Testar responsividade: verificar layout em diferentes tamanhos de tela (mobile, tablet, desktop)\n4. Testar interatividade: hover states nos gráficos, tooltips, botões de refresh e navegação\n5. Criar testes de acessibilidade verificando aria-labels, contrast ratios e navegação por teclado\n6. Testar diferentes cenários de dados: tenant com muitos players, poucos players, storage próximo do limite, sem avisos importantes\n7. Verificar integração com tema dark/light mode e se cores dos gráficos se adaptam corretamente",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           24,
           9
@@ -861,7 +861,7 @@
     "metadata": {
       "created": "2025-09-20T02:30:52.097Z",
       "description": "Default tasks context",
-      "updated": "2025-09-20T21:36:35.598Z"
+      "updated": "2025-09-21T02:38:39.256Z"
     }
   }
 }

@@ -27,6 +27,10 @@ import {
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useState, useEffect } from 'react';
+import PlayerStatusChart from '@/components/dashboard/PlayerStatusChart';
+import StorageUsageBar from '@/components/dashboard/StorageUsageBar';
+import ImportantAlerts from '@/components/dashboard/ImportantAlerts';
+import RecentActivity from '@/components/dashboard/RecentActivity';
 
 
 interface DashboardMetrics {
@@ -290,73 +294,25 @@ function ClientDashboard({
                 </Card>
             </div>
 
+            {/* Advanced Charts and Analytics */}
             <div className="grid lg:grid-cols-2 gap-6">
-                {/* Recent Media */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Mídias Recentes</CardTitle>
-                        <CardDescription>
-                            Últimos arquivos adicionados
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            {recentData?.recent_media?.map((media) => (
-                                <div key={media.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                                    {media.thumbnail_url ? (
-                                        <img
-                                            src={media.thumbnail_url}
-                                            alt={media.name}
-                                            className="w-12 h-12 object-cover rounded"
-                                        />
-                                    ) : (
-                                        <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">
-                                            <IconPhoto className="h-6 w-6 text-gray-400" />
-                                        </div>
-                                    )}
-                                    <div className="flex-1 min-w-0">
-                                        <h4 className="font-medium truncate">{media.name}</h4>
-                                        <p className="text-sm text-gray-600">{media.size} • {media.created_at_human}</p>
-                                    </div>
-                                </div>
-                            ))}
-                            {!recentData?.recent_media?.length && (
-                                <p className="text-gray-500 text-center py-4">Nenhuma mídia encontrada</p>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
+                {/* Player Status Chart */}
+                <PlayerStatusChart data={{ players: currentMetrics?.players || { total: 0, online: 0, offline: 0, online_percentage: 0 } }} />
 
-                {/* Recent Activity */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Atividade dos Players</CardTitle>
-                        <CardDescription>
-                            Status recente dos dispositivos
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            {recentData?.recent_player_activity?.map((player) => (
-                                <div key={player.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-3 h-3 rounded-full ${player.is_online ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                                        <div>
-                                            <h4 className="font-medium">{player.name}</h4>
-                                            <p className="text-sm text-gray-600">{player.last_seen_human}</p>
-                                        </div>
-                                    </div>
-                                    <Badge variant={player.is_online ? 'default' : 'secondary'}>
-                                        {player.is_online ? 'Online' : 'Offline'}
-                                    </Badge>
-                                </div>
-                            ))}
-                            {!recentData?.recent_player_activity?.length && (
-                                <p className="text-gray-500 text-center py-4">Nenhum player encontrado</p>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
+                {/* Storage Usage */}
+                <StorageUsageBar data={{ storage: currentMetrics?.storage || { used: 0, used_formatted: '0 B', limit: 0, limit_formatted: '0 B', percentage: 0, available: 0, available_formatted: '0 B' } }} />
+            </div>
+
+            {/* Alerts and Activity */}
+            <div className="grid lg:grid-cols-2 gap-6">
+                {/* Important Alerts */}
+                <ImportantAlerts
+                    metrics={currentMetrics || { players: { total: 0, online: 0, offline: 0, online_percentage: 0 }, storage: { used: 0, used_formatted: '0 B', limit: 0, limit_formatted: '0 B', percentage: 0, available: 0, available_formatted: '0 B' } }}
+                    recentData={recentData}
+                />
+
+                {/* Recent Activity Timeline */}
+                <RecentActivity data={recentData || { recent_media: [], recent_playlists: [], recent_player_activity: [] }} />
             </div>
 
             {/* Quick Actions */}
