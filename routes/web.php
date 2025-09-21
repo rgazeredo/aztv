@@ -15,6 +15,7 @@ use App\Http\Controllers\ContentModuleController;
 use App\Http\Controllers\ActivationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\QRCodeController;
+use App\Http\Controllers\PlaylistScheduleController;
 
 // API routes for pricing
 Route::get('/api/pricing/plans', [PricingController::class, 'getPlans'])->name('api.pricing.plans');
@@ -147,6 +148,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('playlists/{playlist}/available-players', [PlaylistController::class, 'availablePlayers'])->name('playlists.available-players');
         Route::post('playlists/bulk-action', [PlaylistController::class, 'bulkAction'])->name('playlists.bulk-action');
         Route::get('playlists/{playlist}/analytics', [PlaylistController::class, 'analytics'])->name('playlists.analytics');
+
+        // Playlist Schedules
+        Route::resource('playlist-schedules', PlaylistScheduleController::class);
+        Route::post('playlist-schedules/{playlistSchedule}/toggle', [PlaylistScheduleController::class, 'toggle'])->name('playlist-schedules.toggle');
+        Route::post('playlist-schedules/{playlistSchedule}/duplicate', [PlaylistScheduleController::class, 'duplicate'])->name('playlist-schedules.duplicate');
+        Route::post('playlist-schedules/preview', [PlaylistScheduleController::class, 'preview'])->name('playlist-schedules.preview');
+        Route::post('playlist-schedules/bulk-action', [PlaylistScheduleController::class, 'bulkAction'])->name('playlist-schedules.bulk-action');
 
         // Content Modules
         Route::resource('content-modules', ContentModuleController::class);

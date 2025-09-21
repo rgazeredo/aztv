@@ -4,6 +4,7 @@ use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 use App\Jobs\UpdateCurrencyRates;
+use App\Jobs\ProcessScheduledPlaylists;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -21,4 +22,11 @@ Schedule::job(new UpdateCurrencyRates(['USD', 'EUR']))
     ->everyMinute()
     ->name('fiat-currency-update')
     ->withoutOverlapping(5)
+    ->onOneServer();
+
+// Schedule playlist processing every minute
+Schedule::job(new ProcessScheduledPlaylists())
+    ->everyMinute()
+    ->name('process-scheduled-playlists')
+    ->withoutOverlapping(10) // Prevent overlapping for 10 minutes
     ->onOneServer();
