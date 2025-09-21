@@ -285,7 +285,7 @@ class ProcessVideoFile implements ShouldQueue
     private function dispatchThumbnailGeneration(): void
     {
         try {
-            GenerateThumbnail::dispatch($this->mediaFile);
+            ThumbnailGenerationJob::dispatch($this->mediaFile);
 
             Log::info("Dispatched thumbnail generation job", [
                 'media_file_id' => $this->mediaFile->id,

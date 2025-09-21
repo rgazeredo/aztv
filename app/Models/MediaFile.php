@@ -22,17 +22,21 @@ class MediaFile extends Model
         'size',
         'path',
         'thumbnail_path',
+        'thumbnails',
         'duration',
         'display_time',
         'folder',
         'tags',
         'status',
         'processing_status',
+        'processing_error',
         'processed_at',
+        'type',
     ];
 
     protected $casts = [
         'tags' => 'array',
+        'thumbnails' => 'array',
         'size' => 'integer',
         'duration' => 'integer',
         'display_time' => 'integer',
@@ -59,11 +63,20 @@ class MediaFile extends Model
         return Storage::url($this->path);
     }
 
-    public function getThumbnailUrl(): ?string
+    public function getThumbnailUrl(?string $size = null): ?string
     {
+        $size = $size ?: config('thumbnails.default_size', 'medium');
+
+        // Try to get from new thumbnails array first
+        if ($this->thumbnails && isset($this->thumbnails[$size])) {
+            return Storage::url($this->thumbnails[$size]);
+        }
+
+        // Fallback to legacy thumbnail_path
         if (!$this->thumbnail_path) {
             return null;
         }
+
         return Storage::url($this->thumbnail_path);
     }
 
@@ -75,6 +88,55 @@ class MediaFile extends Model
     public function isImage(): bool
     {
         return str_starts_with($this->mime_type, 'image/');
+    }
+
+    public function isAudio(): bool
+    {
+        return str_starts_with($this->mime_type, 'audio/');
+    }
+
+    public function isDocument(): bool
+    {
+        return in_array($this->mime_type, ['text/html', 'application/pdf']);
+    }
+
+    public function getType(): string
+    {
+        if ($this->type) {
+            return $this->type;
+        }
+
+        // Determine type from MIME type
+        if ($this->isImage()) return 'image';
+        if ($this->isVideo()) return 'video';
+        if ($this->isAudio()) return 'audio';
+        if ($this->isDocument()) return 'document';
+
+        return 'unknown';
+    }
+
+    public function hasThumbnails(): bool
+    {
+        return !empty($this->thumbnails) || !empty($this->thumbnail_path);
+    }
+
+    public function getThumbnailSizes(): array
+    {
+        return $this->thumbnails ? array_keys($this->thumbnails) : [];
+    }
+
+    public function getAllThumbnailUrls(): array
+    {
+        if (!$this->thumbnails) {
+            return [];
+        }
+
+        $urls = [];
+        foreach ($this->thumbnails as $size => $path) {
+            $urls[$size] = Storage::url($path);
+        }
+
+        return $urls;
     }
 
     public function isReady(): bool

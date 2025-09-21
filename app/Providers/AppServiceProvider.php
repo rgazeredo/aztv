@@ -23,5 +23,8 @@ class AppServiceProvider extends ServiceProvider
             ($this->{'app'}['request'] ?? null)?->server?->set('HTTPS', 'on');
             \Illuminate\Support\Facades\URL::forceScheme('https');
         }
+
+        // Register model observers
+        \App\Models\MediaFile::observe(\App\Observers\MediaFileObserver::class);
     }
 }
