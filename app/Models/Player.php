@@ -23,7 +23,7 @@ class Player extends Model
         'group',
         'status',
         'ip_address',
-        'last_seen',
+        'last_seen_at',
         'app_version',
         'device_info',
         'activation_token',
@@ -33,7 +33,7 @@ class Player extends Model
     protected $casts = [
         'device_info' => 'array',
         'settings' => 'array',
-        'last_seen' => 'datetime',
+        'last_seen_at' => 'datetime',
     ];
 
     protected static function boot()
@@ -66,14 +66,19 @@ class Player extends Model
         return $this->hasMany(PlayerLog::class);
     }
 
+    public function alerts(): HasMany
+    {
+        return $this->hasMany(PlayerAlert::class);
+    }
+
     // Methods
     public function isOnline(): bool
     {
-        if (!$this->last_seen) {
+        if (!$this->last_seen_at) {
             return false;
         }
 
-        return $this->last_seen->diffInMinutes(now()) <= 5; // Consider online if seen within 5 minutes
+        return $this->last_seen_at->diffInMinutes(now()) <= 5; // Consider online if seen within 5 minutes
     }
 
     public function getStatus(): string
@@ -92,7 +97,7 @@ class Player extends Model
     public function updateLastSeen(): void
     {
         $this->update([
-            'last_seen' => now(),
+            'last_seen_at' => now(),
             'status' => 'active'
         ]);
     }
@@ -123,15 +128,15 @@ class Player extends Model
     // Scopes
     public function scopeOnline($query)
     {
-        return $query->where('last_seen', '>=', now()->subMinutes(5))
+        return $query->where('last_seen_at', '>=', now()->subMinutes(5))
                     ->where('status', 'active');
     }
 
     public function scopeOffline($query)
     {
         return $query->where(function ($q) {
-            $q->where('last_seen', '<', now()->subMinutes(5))
-              ->orWhereNull('last_seen')
+            $q->where('last_seen_at', '<', now()->subMinutes(5))
+              ->orWhereNull('last_seen_at')
               ->orWhere('status', '!=', 'active');
         });
     }
