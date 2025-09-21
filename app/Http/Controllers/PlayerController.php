@@ -150,23 +150,29 @@ class PlayerController extends Controller
         $tenantId = auth()->user()->tenant_id;
 
         $playlists = Playlist::forTenant($tenantId)->get();
+        $groups = Player::forTenant($tenantId)
+            ->whereNotNull('group')
+            ->distinct()
+            ->pluck('group');
 
-        $tenant = auth()->user()->tenant;
-        $plan = $tenant->getActivePlan();
+        // $tenant = auth()->user()->tenant;
+        // $plan = $tenant->getActivePlan();
 
         return Inertia::render('Player/Create', [
             'playlists' => $playlists,
-            'limits' => [
-                'players' => [
-                    'current' => $tenant->getCurrentPlayerCount(),
-                    'limit' => $tenant->getPlayerLimit(),
-                    'percentage' => $tenant->getPlayerLimit() > 0 ?
-                        round(($tenant->getCurrentPlayerCount() / $tenant->getPlayerLimit()) * 100, 1) : 0,
-                    'is_at_limit' => $tenant->isAtPlayerLimit(),
-                ],
-                'plan_name' => $plan->name,
-                'upgrade_url' => route('billing.plans'),
-            ],
+            'groups' => $groups,
+            // TODO: Reativar quando billing estiver implementado
+            // 'limits' => [
+            //     'players' => [
+            //         'current' => $tenant->getCurrentPlayerCount(),
+            //         'limit' => $tenant->getPlayerLimit(),
+            //         'percentage' => $tenant->getPlayerLimit() > 0 ?
+            //             round(($tenant->getCurrentPlayerCount() / $tenant->getPlayerLimit()) * 100, 1) : 0,
+            //         'is_at_limit' => $tenant->isAtPlayerLimit(),
+            //     ],
+            //     'plan_name' => $plan ? $plan->name : 'Sem plano ativo',
+            //     'upgrade_url' => route('dashboard'),
+            // ],
         ]);
     }
 
@@ -185,16 +191,14 @@ class PlayerController extends Controller
 
         $tenant = auth()->user()->tenant;
 
-        // Verificar limite de players
-        if ($tenant->isAtPlayerLimit()) {
-            $plan = $tenant->getActivePlan();
-            $upgradeUrl = route('billing.plans');
-
-            return back()->withErrors([
-                'player_limit' => "Você atingiu o limite de {$plan->player_limit} player(s) do seu plano atual. " .
-                    "<a href='{$upgradeUrl}' class='text-blue-600 hover:underline'>Clique aqui para fazer upgrade do seu plano</a>."
-            ])->withInput();
-        }
+        // TODO: Reativar verificação de limite quando billing estiver implementado
+        // if ($tenant->isAtPlayerLimit()) {
+        //     $plan = $tenant->getActivePlan();
+        //     $upgradeUrl = route('billing.plans');
+        //     return back()->withErrors([
+        //         'player_limit' => "Você atingiu o limite de {$plan->player_limit} player(s) do seu plano atual."
+        //     ])->withInput();
+        // }
 
         $player = Player::create([
             'tenant_id' => auth()->user()->tenant_id,

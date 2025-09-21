@@ -149,7 +149,7 @@ class DashboardController extends Controller
 
         // Latest 3 playlists
         $recentPlaylists = Playlist::where('tenant_id', $tenant->id)
-            ->select(['id', 'name', 'description', 'items_count', 'created_at', 'updated_at'])
+            ->select(['id', 'name', 'description', 'created_at', 'updated_at'])
             ->latest('updated_at')
             ->limit(3)
             ->get()
@@ -158,7 +158,7 @@ class DashboardController extends Controller
                     'id' => $playlist->id,
                     'name' => $playlist->name,
                     'description' => $playlist->description,
-                    'items_count' => $playlist->items_count ?? 0,
+                    'items_count' => $playlist->getItemsCount(),
                     'updated_at' => $playlist->updated_at->format('d/m/Y H:i'),
                     'updated_at_human' => $playlist->updated_at->diffForHumans(),
                 ];
